@@ -1,9 +1,9 @@
 // Background thread: propagates every satellite so the sky view stays smooth on a phone.
 // Messages in:  reset | add {list:[[l1,l2,stdMag],...]} | obs {lat,lon,h} | tick {t, gen} | passes {t, hours, indices, job}
-// Messages out: pos {t, gen, data: Float64Array [idx, az, el, rangeKm, lit, mag] ...} | passes {job, list}
+// Messages out: pos {t, gen, data: Float64Array [idx, az, el, rangeKm, lit, mag, az+1s, el+1s] ...} | passes {job, list}
 importScripts("https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js");
 
-const D2R = Math.PI / 180, R2D = 180 / Math.PI, EARTH_R = 6371, STRIDE = 6;
+const D2R = Math.PI / 180, R2D = 180 / Math.PI, EARTH_R = 6371;
 let recs = [], mags = [];
 let gd = null, lat = 0, lon = 0;
 let cand = null, lastScan = 0;
@@ -49,10 +49,19 @@ function look(i, date, gmst, sunV, obs) {
            mag: lit && el > -1 ? magnitude(mags[i], pv.position, sunV, obs, la.rangeSat, el) : 99 };
 }
 
+// Direction one second later, so the page can glide each dot smoothly between updates.
+function azElAt(i, date, gmst) {
+  const pv = satellite.propagate(recs[i], date);
+  if (!pv || !pv.position) return null;
+  const la = satellite.ecfToLookAngles(gd, satellite.eciToEcf(pv.position, gmst));
+  return [la.azimuth * R2D, la.elevation * R2D];
+}
+
 function tick(t, gen) {
   const out = [];
   if (gd && recs.length) {
     const date = new Date(t), gmst = satellite.gstime(date), sunV = sunPos(date).v, obs = observerEci(gmst);
+    const date2 = new Date(t + 1000), gmst2 = satellite.gstime(date2);
     // Every 8 s scan everything; in between only recheck what was near or above the horizon.
     const full = !cand || t - lastScan > 8000 || t < lastScan;
     const next = full ? [] : null;
@@ -63,7 +72,10 @@ function tick(t, gen) {
       const l = look(i, date, gmst, sunV, obs);
       if (!l) continue;
       if (full && l.el > -8) next.push(i);
-      if (l.el > -1) out.push(i, l.az, l.el, l.range, l.lit ? 1 : 0, l.mag);
+      if (l.el > -1) {
+        const n = azElAt(i, date2, gmst2) || [l.az, l.el];
+        out.push(i, l.az, l.el, l.range, l.lit ? 1 : 0, l.mag, n[0], n[1]);
+      }
     }
     if (full) { cand = Int32Array.from(next); lastScan = t; }
   }

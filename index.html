@@ -262,7 +262,7 @@ const S = {
   targetId: store.get("target", null),
   mode: null, R: null, view: { az: 180, el: 22 }, vfov: 70,
   passes: null, passesAt: 0, passJob: 0,
-  tab: "now", iosOffset: null, lastSensor: 0, anyEvent: false, gotAbsolute: false,
+  tab: "now", lastSensor: 0, anyEvent: false,
   tleTime: 0, times: [], loading: "Loading satellites…", detailsId: null,
 };
 const CAT_LABEL = { bright: "Bright / easy to see", starlink: "Starlink", other: "Active satellite" };
@@ -377,7 +377,7 @@ const worker = new Worker("worker.js");
 let tickBusy = false, tickSent = 0;
 worker.onmessage = e => {
   const m = e.data;
-  if (m.type === "pos") { tickBusy = false; if (m.gen === S.gen) applyPositions(m.data); }
+  if (m.type === "pos") { tickBusy = false; if (m.gen === S.gen) applyPositions(m.data, m.t); }
   else if (m.type === "passes" && m.job === S.passJob) applyPasses(m.list);
 };
 worker.onerror = () => { S.loading = "The satellite calculator didn't start. Reload the page."; updateStatus(); };
@@ -390,15 +390,21 @@ function requestTick() {
 }
 function sendObs() { if (S.loc) worker.postMessage({ type: "obs", lat: S.loc.lat, lon: S.loc.lon, h: S.loc.h || 0 }); }
 
-function applyPositions(d) {
+function applyPositions(d, t) {
   const now = [], map = new Map();
-  for (let k = 0; k < d.length; k += 6) {
+  for (let k = 0; k < d.length; k += 8) {
     const sat = S.sats[d[k]];
     if (!sat) continue;
-    const e = { sat, az: d[k + 1], el: d[k + 2], range: d[k + 3], lit: d[k + 4] === 1, mag: d[k + 5], v: enu(d[k + 1], d[k + 2]) };
+    const e = { sat, t, az: d[k + 1], el: d[k + 2], range: d[k + 3], lit: d[k + 4] === 1, mag: d[k + 5],
+                v: enu(d[k + 1], d[k + 2]), v1: enu(d[k + 6], d[k + 7]) };
     now.push(e); map.set(sat.idx, e);
   }
   S.now = now; S.nowMap = map;
+}
+// Where a satellite is at this instant: glide from its last computed position toward where it will be 1 s later.
+function vNow(e, now) {
+  const f = Math.min(3, (now - e.t) / 1000), a = e.v, b = e.v1;
+  return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
 }
 
 function requestPasses() {
@@ -624,29 +630,82 @@ function rotFromView(az, el) {
   // columns: device x = right, device y = up, device z = -forward
   return [r[0], u[0], -f[0], r[1], u[1], -f[1], r[2], u[2], -f[2]];
 }
-function smoothR(next) {
-  if (!S.R) { S.R = next; return; }
-  for (let i = 0; i < 9; i++) S.R[i] += (next[i] - S.R[i]) * 0.25;
-}
 function angDiff(a, b) { return ((a - b + 540) % 360) - 180; }
 
-function onOrientation(e, absolute) {
+// Keep the attitude a proper rotation after blending (Gram-Schmidt on the columns).
+function orthonormalize(R) {
+  let x = [R[0], R[3], R[6]], y = [R[1], R[4], R[7]];
+  const nx = Math.hypot(...x); x = x.map(v => v / nx);
+  const d = x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
+  y = [y[0] - d * x[0], y[1] - d * x[1], y[2] - d * x[2]];
+  const ny = Math.hypot(...y); y = y.map(v => v / ny);
+  const z = [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]];
+  R[0] = x[0]; R[3] = x[1]; R[6] = x[2]; R[1] = y[0]; R[4] = y[1]; R[7] = y[2]; R[2] = z[0]; R[5] = z[1]; R[8] = z[2];
+}
+
+// Adaptive smoothing: tiny wobbles are averaged out, real movements are followed without lag.
+// The compass-only fallback ("noisy") is much jumpier, so it gets heavier smoothing.
+function smoothR(next, noisy) {
+  if (!S.R || !SENS.started) { S.R = next.slice(); SENS.started = true; return; }
+  const R = S.R;
+  let tr = 0;
+  for (let i = 0; i < 9; i++) tr += R[i] * next[i];
+  const ang = Math.acos(Math.max(-1, Math.min(1, (tr - 1) / 2)));   // radians between old and new attitude
+  const k = noisy ? Math.max(0.05, Math.min(0.6, ang / 0.12)) : Math.max(0.15, Math.min(1, ang / 0.03));
+  for (let i = 0; i < 9; i++) R[i] += (next[i] - R[i]) * k;
+  orthonormalize(R);
+}
+
+// Sensor fusion. The gyroscope-based stream ("deviceorientation") is smooth but its zero heading is
+// arbitrary; the compass-based one (Android "deviceorientationabsolute", iOS webkitCompassHeading)
+// knows north but jitters. Draw from the smooth stream and use the compass only to slowly learn
+// how far it is turned from north.
+const SENS = { offset: null, rel: null, lastRel: 0, started: false };
+// Slowly track the gap to north; one wild compass reading can only nudge it by a fraction of a degree.
+// The first readings are averaged evenly so north settles within about a second.
+function learnOffset(est, k) {
+  SENS.n = (SENS.n || 0) + 1;
+  if (SENS.offset == null) { SENS.offset = est; return; }
+  const diff = angDiff(est, SENS.offset);
+  SENS.offset += SENS.n < 60 ? diff / SENS.n : Math.max(-8, Math.min(8, diff)) * k;
+}
+// Heading (degrees clockwise from north) of whichever device axis lies flatter: the top edge or the camera.
+function axisHeading(R, useTop) { return (useTop ? Math.atan2(R[1], R[4]) : Math.atan2(-R[2], -R[5])) * R2D; }
+
+function applyAttitude(R, offset, noisy) {
+  const d = (offset + S.corr) * D2R, c = Math.cos(d), s = Math.sin(d);
+  // turn the world clockwise by d about the vertical: east' = east*c + north*s, north' = -east*s + north*c
+  S.lastSensor = Date.now();
+  smoothR([
+    c * R[0] + s * R[3], c * R[1] + s * R[4], c * R[2] + s * R[5],
+    -s * R[0] + c * R[3], -s * R[1] + c * R[4], -s * R[2] + c * R[5],
+    R[6], R[7], R[8],
+  ], noisy);
+}
+
+function onRelative(e) {
   if (e.alpha == null) return;
   S.anyEvent = true;
-  let alpha = e.alpha;
-  if (!absolute && !e.absolute) {
-    if (typeof e.webkitCompassHeading === "number" && e.webkitCompassHeading >= 0) {
-      // iOS: alpha has an arbitrary zero. Learn the offset to north while the phone is fairly flat.
-      if (Math.abs(e.beta) < 50 && Math.abs(e.gamma) < 50) {
-        const est = 360 - e.webkitCompassHeading - e.alpha;
-        S.iosOffset = S.iosOffset == null ? est : S.iosOffset + angDiff(est, S.iosOffset) * 0.1;
-      }
-      if (S.iosOffset == null) return;
-      alpha = e.alpha + S.iosOffset;
-    } else if (S.gotAbsolute) return;   // ignore relative events when absolute ones are arriving
+  if (e.absolute === true) return onAbsolute(e);   // Firefox: this stream is already north-based
+  const R = rotFromEuler(e.alpha, e.beta, e.gamma);
+  SENS.rel = R; SENS.lastRel = Date.now();
+  // iOS: the compass heading is for the top edge and is trustworthy while the phone is fairly flat.
+  if (typeof e.webkitCompassHeading === "number" && e.webkitCompassHeading >= 0 && Math.abs(e.beta) < 50 && Math.abs(e.gamma) < 50) {
+    learnOffset(e.webkitCompassHeading - axisHeading(R, true), 0.05);
   }
-  S.lastSensor = Date.now();
-  smoothR(rotFromEuler(alpha - S.corr, e.beta, e.gamma));
+  if (SENS.offset != null) applyAttitude(R, SENS.offset);
+}
+
+function onAbsolute(e) {
+  if (e.alpha == null) return;
+  S.anyEvent = true;
+  const A = rotFromEuler(e.alpha, e.beta, e.gamma);
+  if (SENS.rel && Date.now() - SENS.lastRel < 250) {
+    const useTop = Math.hypot(SENS.rel[1], SENS.rel[4]) > Math.hypot(SENS.rel[2], SENS.rel[5]);
+    learnOffset(axisHeading(A, useTop) - axisHeading(SENS.rel, useTop), 0.015);
+  } else {
+    applyAttitude(A, 0, true);   // no gyroscope stream on this phone: use the compass one directly
+  }
 }
 
 async function startSensors() {
@@ -654,8 +713,9 @@ async function startSensors() {
     const p = await DeviceOrientationEvent.requestPermission();
     if (p !== "granted") throw new Error("Motion access was denied. Allow it in Safari settings for this site, then reload.");
   }
-  window.addEventListener("deviceorientationabsolute", e => { S.gotAbsolute = true; onOrientation(e, true); });
-  window.addEventListener("deviceorientation", e => onOrientation(e, false));
+  window.addEventListener("deviceorientationabsolute", onAbsolute);
+  window.addEventListener("deviceorientation", onRelative);
+  try { await screen.orientation?.lock?.("portrait"); } catch {}   // works for the installed app on Android
   S.mode = "sensor";
   setTimeout(() => { if (!S.anyEvent) { S.mode = "drag"; showHint("No motion sensors found. Drag the sky to look around.", 5000); } }, 2500);
 }
@@ -728,6 +788,7 @@ const magAlpha = m => Math.max(0.3, Math.min(1, 1.1 - 0.11 * m));
 const MAG_STEPS = [-2, -1, 0, 1, 2, 3, 4, 5, 6, 7];
 const magStep = m => Math.max(0, Math.min(MAG_STEPS.length - 1, Math.floor(m + 2.5)));
 
+let prevLabels = new Set();
 let tapX = new Float32Array(32768), tapY = new Float32Array(32768), tapI = new Int32Array(32768), tapN = 0, frameNo = 0;
 const readoutEl = $("readout");
 
@@ -792,11 +853,12 @@ function draw() {
   const cx = W / 2, cy = H / 2, near = [];
   if (tapX.length < S.now.length) { tapX = new Float32Array(S.now.length); tapY = new Float32Array(S.now.length); tapI = new Int32Array(S.now.length); }
   tapN = 0;
+  const nowMs = Date.now();
   for (const e of S.now) {
     if (e.el < 0) continue;
     const isT = tgtSat && e.sat === tgtSat;
     if (!isT && (!S.show[e.sat.cat] || (S.eyeOnly && !(e.lit && e.mag <= NAKED_EYE)))) continue;
-    const q = P(e.v);
+    const q = P(vNow(e, nowMs));
     if (!q.front || q.x < -20 || q.x > W + 20 || q.y < -20 || q.y > H + 20) continue;
     if (e.lit) {
       const r = magRadius(e.mag);
@@ -808,7 +870,7 @@ function draw() {
     e.qx = q.x; e.qy = q.y; e.frame = frameNo;
     tapX[tapN] = q.x; tapY[tapN] = q.y; tapI[tapN] = e.sat.idx; tapN++;
     const d2 = (q.x - cx) ** 2 + (q.y - cy) ** 2;
-    if (d2 < 110 * 110) near.push([d2, e]);
+    if (d2 < 110 * 110 || (d2 < 150 * 150 && prevLabels.has(e.sat.idx))) near.push([d2, e]);
   }
   ctx.fillStyle = C.shadow; ctx.globalAlpha = 0.5; ctx.fill(sh);
   ctx.fillStyle = C.lit; ctx.shadowColor = C.lit;
@@ -818,25 +880,30 @@ function draw() {
   }
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
 
-  // labels: bright sunlit satellites, plus whatever is closest to the crosshair
+  // labels: bright sunlit satellites, plus whatever is closest to the crosshair.
+  // Names shown last frame get first claim on space, so labels don't flicker as dots move.
   ctx.font = `11px ${FONT_M}`; ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
   const labeled = new Set();
   // Skip any label that would overlap another label or the direction readout under the crosshair.
   const boxes = [[cx - 75, cy + 14, 150, 26]];
   const label = (e, color, force) => {
-    if (labeled.has(e)) return;
+    if (labeled.has(e.sat.idx)) return;
     const w = ctx.measureText(e.sat.name).width, b = [e.qx + 6, e.qy - 17, w + 2, 14];
     if (!force && boxes.some(o => b[0] < o[0] + o[2] && o[0] < b[0] + b[2] && b[1] < o[1] + o[3] && o[1] < b[1] + b[3])) return;
-    boxes.push(b); labeled.add(e); ctx.fillStyle = color; ctx.fillText(e.sat.name, e.qx + 7, e.qy - 6);
+    boxes.push(b); labeled.add(e.sat.idx); ctx.fillStyle = color; ctx.fillText(e.sat.name, e.qx + 7, e.qy - 6);
   };
   const tgt = tgtSat ? S.nowMap.get(tgtSat.idx) : null;
   if (tgt && tgt.el > 0 && tgt.frame === frameNo) {
     ctx.font = `600 12px ${FONT_M}`; label(tgt, C.target, true); ctx.font = `11px ${FONT_M}`;
   }
   litDrawn.sort((a, b) => a.mag - b.mag);
-  for (let k = 0; k < Math.min(30, litDrawn.length) && litDrawn[k].mag < 4; k++) label(litDrawn[k], C.ink);
   near.sort((a, b) => a[0] - b[0]);
-  for (let k = 0; k < Math.min(6, near.length); k++) label(near[k][1], C.dim);
+  const wanted = [];
+  for (let k = 0; k < Math.min(30, litDrawn.length) && litDrawn[k].mag < 4; k++) wanted.push([litDrawn[k], C.ink]);
+  for (let k = 0; k < Math.min(6, near.length); k++) wanted.push([near[k][1], C.dim]);
+  for (const [e, color] of wanted) if (prevLabels.has(e.sat.idx)) label(e, color);
+  for (const [e, color] of wanted) label(e, color);
+  prevLabels = labeled;
 
   // selected satellite: ring, or an arrow pointing to it
   if (tgt && tgt.el > 0) {
@@ -844,7 +911,7 @@ function draw() {
       ctx.strokeStyle = C.target; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(tgt.qx, tgt.qy, 12, 0, 7); ctx.stroke(); ctx.lineWidth = 1;
     }
-    const q = P(tgt.v);
+    const q = P(vNow(tgt, nowMs));
     const on = q.front && q.x > 20 && q.x < W - 20 && q.y > 60 && q.y < H - 120;
     if (!on) {
       let ang = Math.atan2(-q.sy, q.sx);
