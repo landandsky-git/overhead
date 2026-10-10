@@ -15,10 +15,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap">
 <style>
-/* Layout: full-bleed sky canvas, thin status strip on top, pull-up sheet at the bottom. Single dark look: it is used outdoors at night. */
+/* Layout: full-bleed sky canvas, thin status strip on top, pull-up sheet at the bottom, full-screen panels for settings and satellite details. Single dark look: it is used outdoors at night. */
 :root {
   --sky: #05070d;
   --panel: #0c1220;
+  --panel-2: #121a2c;
   --line: #1c2740;
   --ink: #c9d3e6;
   --dim: #6c7a96;
@@ -27,6 +28,7 @@
   --target: #7af0c8;
   --star: #9fb3d9;
   --horizon: #2f4a3a;
+  --bad: #ff8a7a;
   --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
   --font-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
   --font-data: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
@@ -38,7 +40,7 @@ body { background: var(--sky); color: var(--ink); font: 14px/1.4 var(--font-body
 body.red { filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(.75); }
 [hidden] { display: none !important; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
-button:focus-visible, input:focus-visible { outline: 2px solid var(--target); outline-offset: 2px; }
+button:focus-visible, input:focus-visible, .card:focus-visible { outline: 2px solid var(--target); outline-offset: 2px; }
 
 #sky { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
 
@@ -52,15 +54,17 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--target); ou
 .readout { position: fixed; left: 50%; top: 50%; transform: translate(-50%, 26px); font: 12px var(--font-data); color: var(--dim); text-align: center; pointer-events: none; font-variant-numeric: tabular-nums; }
 .hint { position: fixed; left: 16px; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 56px); text-align: center; font: 12px var(--font-body); color: var(--lit); pointer-events: none; }
 
-.card { position: fixed; left: 16px; right: 16px; bottom: calc(var(--sheet-h, 64px) + 12px); max-width: 420px; margin: 0 auto; background: var(--panel); border: 1px solid var(--target); border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; }
+.card { position: fixed; left: 16px; right: 16px; bottom: calc(var(--sheet-h, 64px) + 12px); max-width: 420px; margin: 0 auto; background: var(--panel); border: 1px solid var(--target); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; cursor: pointer; }
+.card-top { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; }
 .card h3 { margin: 0; font: 600 16px var(--font-display); letter-spacing: .04em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.card .where { grid-column: 1 / -1; font: 13px var(--font-data); color: var(--ink); }
-.card .meta { grid-column: 1 / -1; font: 11px var(--font-data); color: var(--dim); }
-.card button { font: 11px var(--font-data); color: var(--dim); text-transform: uppercase; letter-spacing: .08em; }
+.card .where { font: 13px var(--font-data); color: var(--ink); }
+.card .meta { font: 11px var(--font-data); color: var(--dim); }
+.card .more { font: 11px var(--font-data); color: var(--target); margin-top: 2px; }
+.card button { font: 11px var(--font-data); color: var(--dim); text-transform: uppercase; letter-spacing: .08em; padding: 4px 0 4px 8px; }
 
 .sheet { position: fixed; left: 0; right: 0; bottom: 0; background: var(--panel); border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 8px); max-height: 62%; display: flex; flex-direction: column; touch-action: pan-y; }
 .sheet-head { display: flex; align-items: center; gap: 8px; padding-block: 10px; }
-.grab { flex: 1; text-align: left; font: 600 13px var(--font-display); letter-spacing: .1em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+.grab { flex: 1; min-width: 0; text-align: left; font: 600 13px var(--font-display); letter-spacing: .1em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .grab::after { content: "▴"; color: var(--dim); }
 .sheet.open .grab::after { content: "▾"; }
 .tabs { display: flex; gap: 4px; }
@@ -68,31 +72,66 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--target); ou
 .tab[aria-selected="true"] { color: var(--ink); border-color: var(--line); }
 .sheet-body { overflow-y: auto; min-height: 0; padding-bottom: 4px; }
 .sheet:not(.open) .sheet-body { display: none; }
+.tools { padding-bottom: 8px; }
+input[type=search], input[type=number] { font: 14px var(--font-body); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); width: 100%; }
+input[type=number] { font-family: var(--font-data); }
+input::placeholder { color: var(--dim); }
 .row { display: grid; grid-template-columns: 10px 1fr auto; gap: 10px; align-items: center; width: 100%; padding: 9px 0; border-top: 1px solid var(--line); text-align: left; }
 .row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--shadow); }
 .row.lit .dot { background: var(--lit); box-shadow: 0 0 6px var(--lit); }
+.row.down .dot { background: transparent; border: 1px solid var(--line); }
 .row .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.row .sub { display: block; font: 11px var(--font-data); color: var(--dim); }
+.row .sub { display: block; font: 11px var(--font-data); color: var(--dim); overflow: hidden; text-overflow: ellipsis; }
 .row .num { font: 12px var(--font-data); font-variant-numeric: tabular-nums; text-align: right; color: var(--ink); }
 .row.sel .nm { color: var(--target); }
-.empty { color: var(--dim); padding: 12px 0; font-size: 13px; }
+.empty, .note { color: var(--dim); padding: 10px 0; font-size: 13px; }
 .legend { display: flex; gap: 14px; font: 11px var(--font-data); color: var(--dim); padding-bottom: 6px; flex-wrap: wrap; }
 .legend span::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--shadow); }
 .legend .l::before { background: var(--lit); }
 
-.overlay { position: fixed; inset: 0; background: var(--sky); display: flex; align-items: center; justify-content: center; padding: 24px 16px; overflow-y: auto; touch-action: pan-y; }
-.intro { max-width: 380px; display: flex; flex-direction: column; gap: 16px; }
+.overlay { position: fixed; inset: 0; background: var(--sky); display: flex; align-items: center; justify-content: center; padding: calc(env(safe-area-inset-top, 0px) + 24px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px); overflow-y: auto; touch-action: pan-y; }
+.overlay.page { align-items: flex-start; }
+.intro { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 16px; }
 .intro h1 { margin: 0; font: 600 34px/1.05 var(--font-display); letter-spacing: .1em; text-transform: uppercase; }
 .intro p { margin: 0; color: var(--dim); }
 .primary { background: var(--lit); color: #1a1205; font: 600 15px var(--font-display); letter-spacing: .1em; text-transform: uppercase; padding: 14px; border-radius: 10px; }
 .secondary { border: 1px solid var(--line); padding: 12px; border-radius: 10px; color: var(--ink); }
 .field { display: grid; gap: 6px; font: 11px var(--font-data); color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
-.field input[type=number] { font: 14px var(--font-data); padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); width: 100%; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.err { color: #ff8a7a; font-size: 13px; }
-.settings h2 { margin: 0; font: 600 20px var(--font-display); letter-spacing: .08em; text-transform: uppercase; }
-.settings input[type=range] { width: 100%; }
-.small { font-size: 12px; color: var(--dim); }
+.err { color: var(--bad); font-size: 13px; margin: 0; }
+.small { font-size: 12px; color: var(--dim); margin: 0; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.panel-head h2 { margin: 0; font: 600 20px var(--font-display); letter-spacing: .08em; text-transform: uppercase; }
+.group { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+.group h3 { margin: 0; font: 600 13px var(--font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+.current { font-size: 15px; }
+.current .sub { display: block; font: 12px var(--font-data); color: var(--dim); }
+.results { display: grid; }
+.place { display: grid; gap: 1px; text-align: left; padding: 10px 2px; border-top: 1px solid var(--line); }
+.place .sub { font: 12px var(--font-data); color: var(--dim); }
+details summary { cursor: pointer; color: var(--dim); font-size: 13px; padding-block: 4px; }
+details[open] summary { margin-bottom: 10px; }
+details .secondary { margin-top: 10px; width: 100%; }
+.check { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; font-size: 14px; }
+.check input { width: 18px; height: 18px; accent-color: var(--lit); }
+.check .count { font: 12px var(--font-data); color: var(--dim); font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; accent-color: var(--lit); }
+
+.det h2 { margin: 0; font: 600 24px/1.15 var(--font-display); letter-spacing: .05em; overflow-wrap: anywhere; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 11px var(--font-data); padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); }
+.chip.k { color: var(--ink); }
+dl { display: grid; grid-template-columns: minmax(7.5em, 36%) 1fr; gap: 7px 12px; margin: 0; }
+dt { color: var(--dim); font-size: 12px; padding-top: 1px; }
+dd { margin: 0; min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+dd .sub { display: block; font-size: 12px; color: var(--dim); }
+.passrow { display: grid; grid-template-columns: 10px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.passrow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--shadow); }
+.passrow.lit .dot { background: var(--lit); box-shadow: 0 0 6px var(--lit); }
+.passrow .sub { display: block; font: 11px var(--font-data); color: var(--dim); }
+.passrow .num { font: 12px var(--font-data); text-align: right; }
+.linkbtn { color: var(--target); font: 12px var(--font-data); text-transform: uppercase; letter-spacing: .08em; padding: 8px 0; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 </style>
 </head>
 <body>
@@ -107,11 +146,12 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--target); ou
 <div class="hint" id="hint" hidden></div>
 <div class="readout" id="readout"></div>
 
-<div class="card" id="card" hidden>
-  <h3 id="cardName"></h3>
-  <button id="cardClose">Clear</button>
+<div class="card" id="card" role="button" tabindex="0" aria-label="Show satellite details" hidden>
+  <div class="card-top"><h3 id="cardName"></h3><button id="cardClose">Clear</button></div>
   <div class="where" id="cardWhere"></div>
   <div class="meta" id="cardMeta"></div>
+  <div class="meta" id="cardAbout"></div>
+  <div class="more">Tap for orbit, operator and launch details ›</div>
 </div>
 
 <section class="sheet" id="sheet">
@@ -122,13 +162,16 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--target); ou
       <button class="tab" role="tab" id="tabPasses" aria-selected="false">Passes</button>
     </div>
   </div>
-  <div class="sheet-body" id="sheetBody"></div>
+  <div class="sheet-body" id="sheetBody">
+    <div class="tools" id="nowTools"><input type="search" id="findIn" placeholder="Find a satellite by name or number" autocomplete="off" enterkeyhint="search" aria-label="Find a satellite"></div>
+    <div id="listBox"></div>
+  </div>
 </section>
 
 <div class="overlay" id="intro">
   <div class="intro">
     <h1>Overhead</h1>
-    <p>Point your phone at the night sky to see which satellites are there. Satellites shown in gold are lit by the sun and can be seen with the naked eye when it's dark.</p>
+    <p>Point your phone at the night sky to see which satellites are there. Tracks about 16,000 satellites, including Starlink. Gold ones are lit by the sun and can be seen with the naked eye when it's dark.</p>
     <button class="primary" id="startBtn">Start</button>
     <button class="secondary" id="dragBtn">Use without sensors (drag to look)</button>
     <p class="small">Needs location and motion access. Works best outdoors, away from metal and magnets, after waving the phone in a figure-8 to settle the compass.</p>
@@ -136,25 +179,65 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--target); ou
   </div>
 </div>
 
-<div class="overlay" id="settings" hidden>
-  <div class="intro settings">
-    <h2>Settings</h2>
-    <div class="pair">
-      <label class="field">Latitude<input type="number" id="latIn" step="0.0001" min="-90" max="90"></label>
-      <label class="field">Longitude<input type="number" id="lonIn" step="0.0001" min="-180" max="180"></label>
-    </div>
-    <button class="secondary" id="gpsBtn">Use my current location</button>
-    <label class="field">Compass correction: <span id="corrVal">0°</span>
-      <input type="range" id="corrIn" min="-30" max="30" step="1" value="0">
-    </label>
-    <p class="small">Phone compasses point to magnetic north. If the stars on screen sit consistently to one side of the real ones, nudge this until they line up.</p>
-    <button class="secondary" id="refreshBtn">Download fresh satellite data</button>
-    <p class="small" id="tleInfo"></p>
-    <button class="primary" id="setDone">Done</button>
+<div class="overlay page" id="settings" hidden>
+  <div class="intro">
+    <div class="panel-head"><h2>Settings</h2><button class="linkbtn" id="setDone">Done</button></div>
+
+    <section class="group">
+      <h3>Your location</h3>
+      <div class="current" id="locNow"></div>
+      <label class="field">Search for a town or city
+        <input type="search" id="placeIn" placeholder="Start typing a town name" autocomplete="off" enterkeyhint="search">
+      </label>
+      <div class="results" id="placeResults"></div>
+      <button class="secondary" id="gpsBtn">Use my phone's GPS instead</button>
+      <details>
+        <summary>Enter coordinates instead</summary>
+        <div class="pair">
+          <label class="field">Latitude<input type="number" id="latIn" step="0.0001" min="-90" max="90"></label>
+          <label class="field">Longitude<input type="number" id="lonIn" step="0.0001" min="-180" max="180"></label>
+        </div>
+        <button class="secondary" id="coordBtn">Use these coordinates</button>
+      </details>
+      <p class="err" id="locErr" hidden></p>
+    </section>
+
+    <section class="group">
+      <h3>Show on the sky</h3>
+      <label class="check"><input type="checkbox" id="showBright"><span>Bright satellites, rocket stages and space stations</span><span class="count" id="cntBright"></span></label>
+      <label class="check"><input type="checkbox" id="showStarlink"><span>Starlink</span><span class="count" id="cntStarlink"></span></label>
+      <label class="check"><input type="checkbox" id="showOther"><span>All other active satellites</span><span class="count" id="cntOther"></span></label>
+    </section>
+
+    <section class="group">
+      <h3>Compass correction: <span id="corrVal">0°</span></h3>
+      <input type="range" id="corrIn" min="-30" max="30" step="1" value="0" aria-label="Compass correction in degrees">
+      <p class="small">Phone compasses point to magnetic north. If the stars on screen sit consistently to one side of the real ones, nudge this until they line up.</p>
+    </section>
+
+    <section class="group">
+      <h3>Satellite data</h3>
+      <p class="small" id="tleInfo"></p>
+      <button class="secondary" id="refreshBtn">Download fresh satellite data</button>
+    </section>
+  </div>
+</div>
+
+<div class="overlay page" id="details" hidden>
+  <div class="intro det">
+    <div class="panel-head"><button class="linkbtn" id="detBack">‹ Back to sky</button></div>
+    <h2 id="detName"></h2>
+    <div class="chips" id="detChips"></div>
+    <section class="group"><h3>Right now</h3><dl id="detNow"></dl></section>
+    <section class="group"><h3>About</h3><dl id="detAbout"></dl></section>
+    <section class="group"><h3>Orbit</h3><dl id="detOrbit"></dl></section>
+    <section class="group"><h3>Next passes over you</h3><div id="detPasses"></div></section>
+    <p class="small">Orbit data from CelesTrak. Owner, launch date and site from the CelesTrak satellite catalog.</p>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+<script src="codes.js"></script>
 <script>
 "use strict";
 const D2R = Math.PI / 180, R2D = 180 / Math.PI;
@@ -163,84 +246,165 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 };
+const CODES = window.SAT_CODES || { OWNERS: {}, SITES: {}, TYPES: {}, OPERATORS: [] };
+try { localStorage.removeItem("tle"); } catch {}   // satellite data now lives in the Cache API
 
 // ---------- state ----------
 const S = {
-  loc: store.get("loc", null),          // {lat, lon, h}
-  corr: store.get("corr", 0),           // compass correction, degrees
-  sats: [],                             // {name, id, rec}
-  tleTime: 0,
-  now: [],                              // computed look angles for current time
+  loc: store.get("loc", null),          // {lat, lon, h, name, src: "search" | "gps" | "manual"}
+  corr: store.get("corr", 0),
+  show: Object.assign({ bright: true, starlink: true, other: true }, store.get("show", {})),
+  sats: [], byId: new Map(), counts: { bright: 0, starlink: 0, other: 0 },
+  gen: 0, now: [], nowMap: new Map(),   // positions from the worker: idx -> {sat, az, el, range, lit, v}
   targetId: store.get("target", null),
-  mode: null,                           // "sensor" | "drag"
-  R: null,                              // device->world (ENU) rotation, 3x3 row-major
-  view: { az: 180, el: 22 },            // drag mode camera
-  vfov: 70,
-  passes: null,
-  tab: "now",
-  iosOffset: null,
-  lastSensor: 0,
+  mode: null, R: null, view: { az: 180, el: 22 }, vfov: 70,
+  passes: null, passesAt: 0, passJob: 0,
+  tab: "now", iosOffset: null, lastSensor: 0, anyEvent: false, gotAbsolute: false,
+  tleTime: 0, times: [], loading: "Loading satellites…", detailsId: null,
 };
+const CAT_LABEL = { bright: "Bright / easy to see", starlink: "Starlink", other: "Active satellite" };
 
 // ---------- satellite data ----------
-const GROUPS = ["visual", "stations"];
 const TLE_MAX_AGE = 12 * 3600e3;
+const groupUrl = g => `https://celestrak.org/NORAD/elements/gp.php?GROUP=${g}&FORMAT=tle`;
 
 function parseTLE(text) {
   const lines = text.split(/\r?\n/).map(l => l.trimEnd()).filter(Boolean);
   const out = [];
-  for (let i = 0; i + 2 < lines.length + 1; ) {
-    if (lines[i] && lines[i + 1]?.startsWith("1 ") && lines[i + 2]?.startsWith("2 ")) {
+  for (let i = 0; i < lines.length; ) {
+    if (lines[i + 1]?.startsWith("1 ") && lines[i + 2]?.startsWith("2 ")) {
       out.push({ name: lines[i].trim(), l1: lines[i + 1], l2: lines[i + 2] }); i += 3;
     } else i++;
   }
   return out;
 }
 
-async function fetchGroups() {
-  const all = [];
-  for (const g of GROUPS) {
-    const r = await fetch(`https://celestrak.org/NORAD/elements/gp.php?GROUP=${g}&FORMAT=tle`);
-    if (!r.ok) throw new Error("CelesTrak " + r.status);
-    all.push(...parseTLE(await r.text()));
+async function openCache() { try { return await caches.open("overhead-tle-v1"); } catch { return null; } }
+
+// CelesTrak allows each internet connection one download of a list every 2 hours and answers
+// later requests with a short note, so keep the last good copy and back off after a refusal.
+let lastRefusal = null;
+async function getGroup(g, force) {
+  const url = groupUrl(g), key = "tleTime_" + g, failKey = "tleFail_" + g, time = store.get(key, 0);
+  const cache = await openCache();
+  const cached = async () => {
+    if (!cache) return null;
+    try { const r = await cache.match(url); return r ? { text: await r.text(), time } : null; } catch { return null; }
+  };
+  if (!force && Date.now() - time < TLE_MAX_AGE) { const c = await cached(); if (c) return c; }
+  if (!force && Date.now() - store.get(failKey, 0) < 2 * 3600e3) { lastRefusal = "wait"; return await cached(); }
+  try {
+    const r = await fetch(url);
+    const text = await r.text();
+    if (!/^1 \d{5}/m.test(text)) { lastRefusal = /not updated/i.test(text) ? "wait" : "error"; throw new Error("no data"); }
+    if (cache) { try { await cache.put(url, new Response(text)); } catch {} }
+    store.set(key, Date.now());
+    return { text, time: Date.now() };
+  } catch {
+    if (!lastRefusal) lastRefusal = "offline";
+    store.set(failKey, Date.now());
+    return await cached();
   }
-  if (!all.length) throw new Error("empty");
-  return all;
 }
 
+let loadJob = 0;
 async function loadSats(force) {
-  let cached = store.get("tle", null);
-  let list = cached?.list, time = cached?.time || 0;
-  if (force || !list || Date.now() - time > TLE_MAX_AGE) {
-    try { list = await fetchGroups(); time = Date.now(); store.set("tle", { list, time }); }
-    catch (e) {
-      if (!list) {
-        try { list = parseTLE(await (await fetch("tle-fallback.txt")).text()); time = store.get("fallbackTime", 0); }
-        catch { list = []; }
-      }
-    }
+  const job = ++loadJob;
+  S.gen++; S.passJob++;
+  worker.postMessage({ type: "reset" });
+  S.sats = []; S.byId = new Map(); S.counts = { bright: 0, starlink: 0, other: 0 };
+  S.now = []; S.nowMap = new Map(); S.passes = null; S.passesAt = 0; paths.clear();
+  S.loading = "Loading satellites…"; updateStatus();
+  const times = [];
+  let bright = [];
+  for (const g of ["stations", "visual"]) {
+    const r = await getGroup(g, force);
+    if (job !== loadJob) return;
+    if (r) { bright.push(...parseTLE(r.text)); times.push(r.time); }
   }
-  const seen = new Set();
-  S.sats = [];
+  if (!bright.length) { try { bright = parseTLE(await (await fetch("tle-fallback.txt")).text()); } catch {} }
+  addSats(bright, "bright");
+  S.times = times;
+  await loadActive(force);
+}
+
+// Starlink and every other active satellite: one big list, added after the bright ones.
+async function loadActive(force) {
+  const job = loadJob;
+  S.loading = "Loading Starlink and other satellites…"; updateStatus(); renderSheet(); updateCard();
+  lastRefusal = null;
+  const act = await getGroup("active", force);
+  if (job !== loadJob) return;
+  if (act) { addSats(parseTLE(act.text), null); S.times.push(act.time); }
+  S.tleTime = S.times.length ? Math.min(...S.times) : 0;
+  S.loading = act ? "" : lastRefusal === "wait"
+    ? "Starlink and other satellites will load within 2 hours (CelesTrak download limit)"
+    : "Showing bright satellites only (couldn't download the full list)";
+  updateStatus(); updateTleInfo(); renderSheet(); updateCard();
+}
+
+function addSats(list, cat) {
+  const out = [];
   for (const t of list) {
     const id = t.l1.slice(2, 7).trim();
-    if (seen.has(id)) continue; seen.add(id);
-    try { const rec = satellite.twoline2satrec(t.l1, t.l2); if (!rec.error) S.sats.push({ name: prettyName(t.name), id, rec }); } catch {}
+    if (S.byId.has(id)) continue;
+    const raw = t.name.replace(/^0 /, "").trim();
+    const c = cat || (/^STARLINK/i.test(raw) ? "starlink" : "other");
+    const sat = { idx: S.sats.length, id, raw, name: prettyName(raw), nameU: raw.toUpperCase(), l1: t.l1, l2: t.l2, cat: c };
+    S.sats.push(sat); S.byId.set(id, sat); S.counts[c]++;
+    out.push([t.l1, t.l2]);
   }
-  S.tleTime = time;
-  S.passes = null; S.passesAt = 0; passJob++;
+  worker.postMessage({ type: "add", list: out });
   updateTleInfo();
 }
 
 function prettyName(n) {
-  const fixes = { "ISS (ZARYA)": "ISS", "CSS (TIANHE)": "Tiangong (CSS)" };
+  const fixes = { "ISS (ZARYA)": "ISS", "CSS (TIANHE)": "Tiangong (CSS)", "HST": "Hubble Space Telescope" };
   return fixes[n] || n.replace(/\s+/g, " ");
+}
+
+// ---------- background worker ----------
+const worker = new Worker("worker.js");
+let tickBusy = false, tickSent = 0;
+worker.onmessage = e => {
+  const m = e.data;
+  if (m.type === "pos") { tickBusy = false; if (m.gen === S.gen) applyPositions(m.data); }
+  else if (m.type === "passes" && m.job === S.passJob) applyPasses(m.list);
+};
+worker.onerror = () => { S.loading = "The satellite calculator didn't start. Reload the page."; updateStatus(); };
+
+function requestTick() {
+  if (document.hidden) return;
+  if (tickBusy && Date.now() - tickSent < 3000) return;
+  tickBusy = true; tickSent = Date.now();
+  worker.postMessage({ type: "tick", t: Date.now(), gen: S.gen });
+}
+function sendObs() { if (S.loc) worker.postMessage({ type: "obs", lat: S.loc.lat, lon: S.loc.lon, h: S.loc.h || 0 }); }
+
+function applyPositions(d) {
+  const now = [], map = new Map();
+  for (let k = 0; k < d.length; k += 5) {
+    const sat = S.sats[d[k]];
+    if (!sat) continue;
+    const e = { sat, az: d[k + 1], el: d[k + 2], range: d[k + 3], lit: d[k + 4] === 1, v: enu(d[k + 1], d[k + 2]) };
+    now.push(e); map.set(sat.idx, e);
+  }
+  S.now = now; S.nowMap = map;
+}
+
+function requestPasses() {
+  const indices = S.sats.filter(s => s.cat === "bright").map(s => s.idx);
+  S.passesAt = Date.now();
+  worker.postMessage({ type: "passes", t: Date.now(), hours: 12, indices, job: ++S.passJob });
+}
+function applyPasses(list) {
+  S.passes = list.map(p => ({ ...p, sat: S.sats[p.idx] })).filter(p => p.sat)
+    .sort((a, b) => (b.visible - a.visible) || (a.start - b.start));
+  if (S.tab === "passes") renderSheet();
 }
 
 // ---------- astronomy ----------
 function jd(date) { return date.getTime() / 86400000 + 2440587.5; }
-
-// Low-precision sun: returns ECI unit vector and RA/Dec (radians).
 function sunPos(date) {
   const n = jd(date) - 2451545.0;
   const L = (280.460 + 0.9856474 * n) * D2R;
@@ -250,32 +414,21 @@ function sunPos(date) {
   const v = { x: Math.cos(lam), y: Math.cos(eps) * Math.sin(lam), z: Math.sin(eps) * Math.sin(lam) };
   return { v, ra: Math.atan2(v.y, v.x), dec: Math.asin(v.z) };
 }
-
-// RA/Dec (radians) -> {az, el} degrees for observer at gmst.
 function raDecToAltAz(ra, dec, gmst, lat, lon) {
   const ha = gmst + lon - ra;
-  const sinEl = Math.sin(dec) * Math.sin(lat) + Math.cos(dec) * Math.cos(lat) * Math.cos(ha);
-  const el = Math.asin(sinEl);
+  const el = Math.asin(Math.sin(dec) * Math.sin(lat) + Math.cos(dec) * Math.cos(lat) * Math.cos(ha));
   const az = Math.atan2(-Math.sin(ha) * Math.cos(dec), Math.cos(lat) * Math.sin(dec) - Math.sin(lat) * Math.cos(dec) * Math.cos(ha));
   return { az: ((az * R2D) + 360) % 360, el: el * R2D };
 }
-
 const EARTH_R = 6371;
-function inShadow(p, sunV) {
-  const d = p.x * sunV.x + p.y * sunV.y + p.z * sunV.z;
+function inShadow(p, s) {
+  const d = p.x * s.x + p.y * s.y + p.z * s.z;
   if (d > 0) return false;
-  const px = p.x - d * sunV.x, py = p.y - d * sunV.y, pz = p.z - d * sunV.z;
+  const px = p.x - d * s.x, py = p.y - d * s.y, pz = p.z - d * s.z;
   return px * px + py * py + pz * pz < EARTH_R * EARTH_R;
 }
-
 function observerGd() { return { latitude: S.loc.lat * D2R, longitude: S.loc.lon * D2R, height: (S.loc.h || 0) / 1000 }; }
-
-function look(sat, date, gmst, gd, sunV) {
-  const pv = satellite.propagate(sat.rec, date);
-  if (!pv || !pv.position || typeof pv.position === "boolean") return null;
-  const la = satellite.ecfToLookAngles(gd, satellite.eciToEcf(pv.position, gmst));
-  return { az: ((la.azimuth * R2D) + 360) % 360, el: la.elevation * R2D, range: la.rangeSat, lit: !inShadow(pv.position, sunV) };
-}
+function enu(az, el) { az *= D2R; el *= D2R; return [Math.sin(az) * Math.cos(el), Math.cos(az) * Math.cos(el), Math.sin(el)]; }
 
 // Bright stars for orientation: [name, RA hours, Dec deg, mag]
 const STARS = [
@@ -294,73 +447,136 @@ const LINES = [["Dubhe","Merak"],["Merak","Phecda"],["Phecda","Megrez"],["Megrez
   ["Betelgeuse","Bellatrix"],["Bellatrix","Mintaka"],["Betelgeuse","Alnitak"],["Mintaka","Alnilam"],["Alnilam","Alnitak"],["Alnitak","Saiph"],["Mintaka","Rigel"],
   ["Caph","Schedar"],["Schedar","Navi"],["Navi","Ruchbah"],["Ruchbah","Segin"]];
 
-// ---------- live computation ----------
-let sky = { stars: [], sunEl: 0, time: 0 };
-function computeNow() {
-  if (!S.loc || !S.sats.length) { S.now = []; return; }
-  const date = new Date(), gmst = satellite.gstime(date), gd = observerGd();
-  const sun = sunPos(date);
+const sky = { stars: [], sunEl: -90 };
+function computeSky() {
+  if (!S.loc) return;
+  const date = new Date(), gmst = satellite.gstime(date), sun = sunPos(date);
   const lat = S.loc.lat * D2R, lon = S.loc.lon * D2R;
   sky.sunEl = raDecToAltAz(sun.ra, sun.dec, gmst, lat, lon).el;
-  sky.stars = STARS.map(s => ({ name: s[0], mag: s[3], ...raDecToAltAz(s[1] * 15 * D2R, s[2] * D2R, gmst, lat, lon) }));
-  const res = [];
-  for (const sat of S.sats) {
-    const l = look(sat, date, gmst, gd, sun.v);
-    if (l && l.el > -2) res.push({ sat, ...l });
-  }
-  res.sort((a, b) => (b.lit - a.lit) || (b.el - a.el));
-  S.now = res;
-  // paths for things above the horizon (refreshed less often)
-  if (date - sky.time > 4000) {
-    sky.time = +date;
-    for (const r of res) r.sat.path = pathFor(r.sat, date, gd);
-  }
+  sky.stars = STARS.map(s => { const a = raDecToAltAz(s[1] * 15 * D2R, s[2] * D2R, gmst, lat, lon); return { name: s[0], mag: s[3], ...a, v: enu(a.az, a.el) }; });
 }
 
-function pathFor(sat, date, gd) {
-  const pts = [];
-  for (let s = -180; s <= 300; s += 20) {
-    const t = new Date(+date + s * 1000), pv = satellite.propagate(sat.rec, t);
-    if (!pv.position) continue;
-    const la = satellite.ecfToLookAngles(gd, satellite.eciToEcf(pv.position, satellite.gstime(t)));
-    pts.push({ az: la.azimuth * R2D, el: la.elevation * R2D, future: s > 0 });
+// ---------- one satellite at a time (main thread) ----------
+function rec(sat) {
+  if (sat.rec === undefined) {
+    try { sat.rec = satellite.twoline2satrec(sat.l1, sat.l2); if (sat.rec.error) sat.rec = null; } catch { sat.rec = null; }
   }
-  return pts;
+  return sat.rec;
 }
 
-// ---------- pass prediction (next 12 hours, background chunks) ----------
-let passJob = 0;
-async function computePasses() {
-  const job = ++passJob;
-  S.passesAt = Date.now();
-  const start = Date.now(), step = 60e3, steps = 12 * 60;
-  const gd = observerGd(), lat = S.loc.lat * D2R, lon = S.loc.lon * D2R;
-  const tsteps = [];
-  for (let i = 0; i <= steps; i++) {
-    const date = new Date(start + i * step), gmst = satellite.gstime(date), sun = sunPos(date);
-    tsteps.push({ date, gmst, sunV: sun.v, dark: raDecToAltAz(sun.ra, sun.dec, gmst, lat, lon).el < -6 });
+function lookOne(sat, date) {
+  const r = rec(sat);
+  if (!r) return null;
+  const pv = satellite.propagate(r, date);
+  if (!pv || !pv.position) return null;
+  const gmst = satellite.gstime(date), geo = satellite.eciToGeodetic(pv.position, gmst), v = pv.velocity;
+  const out = { lat: geo.latitude * R2D, lon: geo.longitude * R2D, alt: geo.height, speed: Math.hypot(v.x, v.y, v.z), lit: !inShadow(pv.position, sunPos(date).v) };
+  if (S.loc) {
+    const la = satellite.ecfToLookAngles(observerGd(), satellite.eciToEcf(pv.position, gmst));
+    Object.assign(out, { az: ((la.azimuth * R2D) + 360) % 360, el: la.elevation * R2D, range: la.rangeSat });
   }
-  const passes = [];
-  for (let k = 0; k < S.sats.length; k++) {
-    const sat = S.sats[k];
-    let cur = null;
-    for (const t of tsteps) {
-      const l = look(sat, t.date, t.gmst, gd, t.sunV);
-      if (!l) break;
-      if (l.el > 0) {
-        if (!cur) cur = { sat, start: t.date, startAz: l.az, maxEl: -90, visible: false };
-        if (l.el > cur.maxEl) { cur.maxEl = l.el; cur.maxTime = t.date; cur.maxAz = l.az; }
-        if (l.el > 10 && l.lit && t.dark) cur.visible = true;
-        cur.end = t.date; cur.endAz = l.az;
-      } else if (cur) { if (cur.maxEl >= 15) passes.push(cur); cur = null; }
+  return out;
+}
+
+const paths = new Map();
+function computePaths() {
+  paths.clear();
+  if (!S.loc) return;
+  const date = new Date(), gd = observerGd();
+  const want = S.now.filter(e => e.el > 0 && (e.sat.id === S.targetId || (e.lit && e.sat.cat === "bright" && S.show.bright))).slice(0, 30);
+  for (const e of want) {
+    const r = rec(e.sat); if (!r) continue;
+    const pts = [];
+    for (let s = -180; s <= 300; s += 20) {
+      const t = new Date(+date + s * 1000), pv = satellite.propagate(r, t);
+      if (!pv || !pv.position) continue;
+      const la = satellite.ecfToLookAngles(gd, satellite.eciToEcf(pv.position, satellite.gstime(t)));
+      pts.push({ v: enu(la.azimuth * R2D, la.elevation * R2D), future: s > 0 });
     }
-    if (cur && cur.maxEl >= 15) passes.push(cur);
-    if (k % 8 === 7) { await new Promise(r => setTimeout(r, 0)); if (job !== passJob) return; }
+    paths.set(e.sat.idx, pts);
   }
-  passes.sort((a, b) => (b.visible - a.visible) || (a.start - b.start));
-  S.passes = passes;
-  renderSheet();
 }
+
+// Passes of one satellite over the next 48 hours (cached for 10 minutes).
+function passesFor(sat) {
+  const key = S.loc ? `${S.loc.lat},${S.loc.lon}` : "";
+  if (sat._passes && sat._passes.key === key && Date.now() - sat._passes.at < 10 * 60e3) return sat._passes.list;
+  const r = rec(sat), list = [];
+  if (r && S.loc) {
+    const gd = observerGd(), lat = S.loc.lat * D2R, lon = S.loc.lon * D2R, start = Date.now(), step = 30e3;
+    let cur = null;
+    for (let s = 0; s <= 48 * 120; s++) {
+      const date = new Date(start + s * step), gmst = satellite.gstime(date);
+      const pv = satellite.propagate(r, date);
+      if (!pv || !pv.position) break;
+      const la = satellite.ecfToLookAngles(gd, satellite.eciToEcf(pv.position, gmst));
+      const el = la.elevation * R2D, az = ((la.azimuth * R2D) + 360) % 360;
+      if (el > 0) {
+        if (!cur) cur = { start: +date, startAz: az, maxEl: -90, visible: false };
+        if (el > cur.maxEl) { cur.maxEl = el; cur.maxTime = +date; cur.maxAz = az; }
+        if (el > 10 && !cur.visible) {
+          const sun = sunPos(date);
+          if (raDecToAltAz(sun.ra, sun.dec, gmst, lat, lon).el < -6 && !inShadow(pv.position, sun.v)) cur.visible = true;
+        }
+        cur.end = +date; cur.endAz = az;
+      } else if (cur) { if (cur.maxEl >= 10) list.push(cur); cur = null; if (list.length >= 8) break; }
+    }
+    if (cur && cur.maxEl >= 10) list.push(cur);
+  }
+  sat._passes = { key, at: Date.now(), list };
+  return list;
+}
+function nextPass(sat) { return passesFor(sat).find(p => p.end > Date.now()); }
+
+const MU = 398600.4418, RE = 6378.137;
+function orbitInfo(sat) {
+  const r = rec(sat);
+  if (!r) return null;
+  const n = r.no / 60, a = Math.cbrt(MU / (n * n)), e = r.ecco;
+  const period = 2 * Math.PI / r.no, apo = a * (1 + e) - RE, peri = a * (1 - e) - RE, inc = r.inclo * R2D;
+  let cls, short, note;
+  if (period > 1300 && period < 1600 && e < 0.1) {
+    short = "GEO";
+    cls = inc < 3 ? "Geostationary orbit (GEO)" : "Geosynchronous orbit (GEO)";
+    note = inc < 3 ? "Hangs almost still in the sky" : "Drifts in a slow figure-8 each day";
+  } else if (apo < 2000) { short = "LEO"; cls = "Low Earth orbit (LEO)"; note = "Crosses the sky in a few minutes"; }
+  else if (e > 0.25) { short = "HEO"; cls = "Highly elliptical orbit (HEO)"; note = "Swings far out, then dips close to Earth"; }
+  else { short = "MEO"; cls = "Medium Earth orbit (MEO)"; note = "Moves slowly, over hours"; }
+  return { period, apo, peri, inc, e, cls, short, note, perDay: 1440 / period };
+}
+function tleEpoch(l1) {
+  const yy = +l1.slice(18, 20), doy = parseFloat(l1.slice(20, 32));
+  return new Date(Date.UTC(yy < 57 ? 2000 + yy : 1900 + yy, 0, 1) + (doy - 1) * 86400e3);
+}
+function intlDesig(l1) {
+  const s = l1.slice(9, 17).trim();
+  if (!/^\d{5}/.test(s)) return null;
+  const yy = +s.slice(0, 2), year = yy < 57 ? 2000 + yy : 1900 + yy;
+  return { year, code: `${year}-${s.slice(2)}` };
+}
+function operatorOf(sat) {
+  for (const [re, op, role] of CODES.OPERATORS) if (re.test(sat.nameU)) return { op, role };
+  if (/ R\/B/.test(sat.nameU)) return { op: null, role: "Rocket stage" };
+  if (/ DEB/.test(sat.nameU)) return { op: null, role: "Debris" };
+  return null;
+}
+
+// Owner, launch date and site from the CelesTrak satellite catalog, fetched when a satellite is selected.
+const catMem = new Map();
+async function catalog(sat) {
+  if (catMem.has(sat.id)) return catMem.get(sat.id);
+  const saved = store.get("cat_" + sat.id, null);
+  if (saved) { catMem.set(sat.id, saved); return saved; }
+  const r = await fetch(`https://celestrak.org/satcat/records.php?CATNR=${encodeURIComponent(sat.id)}&FORMAT=JSON`);
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const j = await r.json(), c = Array.isArray(j) ? j[0] : null;
+  if (!c) throw new Error("not in catalog");
+  const keep = { owner: c.OWNER, launch: c.LAUNCH_DATE, site: c.LAUNCH_SITE, type: c.OBJECT_TYPE, status: c.OPS_STATUS_CODE, objId: c.OBJECT_ID };
+  catMem.set(sat.id, keep); store.set("cat_" + sat.id, keep);
+  return keep;
+}
+const STATUS = { "+": "Operational", "-": "Not operational", "P": "Partially operational", "B": "Backup / standby", "S": "Spare", "X": "Extended mission", "D": "Decayed", "?": "Unknown" };
+const ownerName = c => c && c.owner ? (CODES.OWNERS[c.owner] || c.owner) : null;
 
 // ---------- orientation ----------
 function rotFromEuler(a, b, g) {
@@ -382,8 +598,7 @@ function rotFromView(az, el) {
 }
 function smoothR(next) {
   if (!S.R) { S.R = next; return; }
-  const k = 0.25;
-  for (let i = 0; i < 9; i++) S.R[i] += (next[i] - S.R[i]) * k;
+  for (let i = 0; i < 9; i++) S.R[i] += (next[i] - S.R[i]) * 0.25;
 }
 function angDiff(a, b) { return ((a - b + 540) % 360) - 180; }
 
@@ -419,10 +634,10 @@ async function startSensors() {
 
 function getLocation() {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) return reject(new Error("This browser can't share location. Enter it in Settings."));
+    if (!navigator.geolocation) return reject(new Error("This browser can't share its location. Search for your town in Settings."));
     navigator.geolocation.getCurrentPosition(
       p => resolve({ lat: +p.coords.latitude.toFixed(4), lon: +p.coords.longitude.toFixed(4), h: p.coords.altitude || 0 }),
-      err => reject(new Error(err.code === 1 ? "Location access was denied. Enter your location in Settings." : "Couldn't get your location. Enter it in Settings.")),
+      err => reject(new Error(err.code === 1 ? "Location access was denied. Search for your town in Settings instead." : "Couldn't get your location. Search for your town in Settings.")),
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 });
   });
 }
@@ -441,32 +656,30 @@ function screenAngle() {
   const a = (screen.orientation && typeof screen.orientation.angle === "number") ? screen.orientation.angle : (window.orientation || 0);
   return a * D2R;
 }
-
-function enu(az, el) {
-  az *= D2R; el *= D2R;
-  return [Math.sin(az) * Math.cos(el), Math.cos(az) * Math.cos(el), Math.sin(el)];
-}
-// Project a sky direction to screen. Returns {x, y, front, dx, dy}
-function project(az, el, R, f, th) {
-  const v = enu(az, el);
+// Project a unit sky vector (east, north, up) to the screen.
+function projectV(v, R, f, th) {
   const dx = R[0] * v[0] + R[3] * v[1] + R[6] * v[2];
   const dy = R[1] * v[0] + R[4] * v[1] + R[7] * v[2];
   const dz = R[2] * v[0] + R[5] * v[1] + R[8] * v[2];
   const sx = Math.cos(th) * dx - Math.sin(th) * dy;
   const sy = Math.sin(th) * dx + Math.cos(th) * dy;
-  const front = -dz > 0.05;
-  return { x: W / 2 + (sx / -dz) * f, y: H / 2 - (sy / -dz) * f, front, sx, sy };
+  return { x: W / 2 + (sx / -dz) * f, y: H / 2 - (sy / -dz) * f, front: -dz > 0.05, sx, sy };
 }
+const project = (az, el, R, f, th) => projectV(enu(az, el), R, f, th);
 
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const C = {};
-function loadColors() { for (const k of ["sky","ink","dim","lit","shadow","target","star","horizon","line"]) C[k] = css("--" + k); }
+let FONT_D = "", FONT_M = "";
+function loadColors() {
+  for (const k of ["sky","ink","dim","lit","shadow","target","star","horizon","line"]) C[k] = css("--" + k);
+  FONT_D = css("--font-display"); FONT_M = css("--font-data");
+}
 
 function polyline(pts, R, f, th) {
   ctx.beginPath();
   let pen = false;
   for (const p of pts) {
-    const q = project(p.az, p.el, R, f, th);
+    const q = p.v ? projectV(p.v, R, f, th) : project(p.az, p.el, R, f, th);
     if (!q.front) { pen = false; continue; }
     if (pen) ctx.lineTo(q.x, q.y); else { ctx.moveTo(q.x, q.y); pen = true; }
   }
@@ -474,202 +687,383 @@ function polyline(pts, R, f, th) {
 }
 
 function compassName(az) { return ["N","NE","E","SE","S","SW","W","NW"][Math.round(az / 45) % 8]; }
+function viewAz(R) { return ((Math.atan2(-R[2], -R[5]) * R2D) + 360) % 360; }
+
+const GRID = [];
+for (const alt of [30, 60]) { const pts = []; for (let a = 0; a <= 360; a += 5) pts.push({ v: enu(a, alt) }); GRID.push(pts); }
+for (let a = 0; a < 360; a += 30) { const pts = []; for (let e = 0; e <= 90; e += 5) pts.push({ v: enu(a, e) }); GRID.push(pts); }
+const HORIZON = []; for (let a = 0; a <= 360; a += 3) HORIZON.push({ v: enu(a, 0) });
+
+let tapX = new Float32Array(32768), tapY = new Float32Array(32768), tapI = new Int32Array(32768), tapN = 0, frameNo = 0;
+const readoutEl = $("readout");
 
 function draw() {
   requestAnimationFrame(draw);
+  frameNo++;
   if (!W) resize();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.fillStyle = C.sky; ctx.fillRect(0, 0, W, H);
-  if (S.mode === "drag" || !S.mode) S.R = rotFromView(S.view.az, S.view.el);
+  if (S.mode !== "sensor") S.R = rotFromView(S.view.az, S.view.el);
   const R = S.R; if (!R) return;
-  const th = S.mode === "drag" ? 0 : screenAngle();
+  const th = S.mode === "sensor" ? screenAngle() : 0;
   const f = (H / 2) / Math.tan((S.vfov / 2) * D2R);
+  const P = v => projectV(v, R, f, th);
 
-  // ground tint below the horizon
-  ctx.lineWidth = 1;
-  // altitude rings and azimuth spokes
-  ctx.strokeStyle = C.line;
-  for (const alt of [30, 60]) { const pts = []; for (let a = 0; a <= 360; a += 5) pts.push({ az: a, el: alt }); polyline(pts, R, f, th); }
-  for (let a = 0; a < 360; a += 30) { const pts = []; for (let e = 0; e <= 90; e += 5) pts.push({ az: a, el: e }); polyline(pts, R, f, th); }
-  // horizon
-  ctx.strokeStyle = C.horizon; ctx.lineWidth = 2;
-  { const pts = []; for (let a = 0; a <= 360; a += 3) pts.push({ az: a, el: 0 }); polyline(pts, R, f, th); }
-  ctx.lineWidth = 1;
-  // cardinal labels
-  ctx.font = `600 14px ${css("--font-display")}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  // altitude rings, azimuth spokes, horizon
+  ctx.lineWidth = 1; ctx.strokeStyle = C.line;
+  for (const g of GRID) polyline(g, R, f, th);
+  ctx.strokeStyle = C.horizon; ctx.lineWidth = 2; polyline(HORIZON, R, f, th); ctx.lineWidth = 1;
+  ctx.font = `600 14px ${FONT_D}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   for (let a = 0; a < 360; a += 45) {
     const q = project(a, 0, R, f, th); if (!q.front) continue;
     ctx.fillStyle = a % 90 === 0 ? C.ink : C.dim;
     ctx.fillText(compassName(a), q.x, q.y + 14);
   }
-  ctx.font = `10px ${css("--font-data")}`; ctx.fillStyle = C.dim;
+  ctx.font = `10px ${FONT_M}`; ctx.fillStyle = C.dim;
   for (const alt of [30, 60]) { const q = project(Math.round(viewAz(R) / 30) * 30 + 15, alt, R, f, th); if (q.front) ctx.fillText(alt + "°", q.x, q.y - 6); }
   { const q = project(0, 90, R, f, th); if (q.front) ctx.fillText("ZENITH", q.x, q.y - 8); }
 
-  // stars + constellation lines
-  const byName = Object.fromEntries(sky.stars.map(s => [s.name, s]));
-  ctx.strokeStyle = C.line; ctx.lineWidth = 1;
+  // stars and constellation lines
+  const byName = {};
+  for (const s of sky.stars) byName[s.name] = s;
+  ctx.strokeStyle = C.line;
   for (const [a, b] of LINES) {
     const A = byName[a], B = byName[b]; if (!A || !B || A.el < 0 || B.el < 0) continue;
-    const p = project(A.az, A.el, R, f, th), q = project(B.az, B.el, R, f, th);
+    const p = P(A.v), q = P(B.v);
     if (!p.front || !q.front) continue;
     ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
   }
-  ctx.textAlign = "left"; ctx.font = `10px ${css("--font-data")}`;
+  ctx.textAlign = "left";
   for (const s of sky.stars) {
     if (s.el < -1) continue;
-    const q = project(s.az, s.el, R, f, th); if (!q.front) continue;
-    const r = Math.max(0.8, 2.6 - s.mag * 0.6);
-    ctx.fillStyle = C.star; ctx.beginPath(); ctx.arc(q.x, q.y, r, 0, 7); ctx.fill();
+    const q = P(s.v); if (!q.front) continue;
+    ctx.fillStyle = C.star; ctx.beginPath(); ctx.arc(q.x, q.y, Math.max(0.8, 2.6 - s.mag * 0.6), 0, 7); ctx.fill();
     if (s.mag < 1.3) { ctx.fillStyle = C.dim; ctx.fillText(s.name, q.x + 5, q.y + 8); }
   }
 
-  // satellites
-  const target = S.now.find(n => n.sat.id === S.targetId);
-  for (const n of S.now) {
-    if (n.sat.path && (n === target || n.lit)) {
-      ctx.strokeStyle = n === target ? C.target : C.lit; ctx.globalAlpha = n === target ? 0.6 : 0.25;
-      ctx.setLineDash([3, 4]); polyline(n.sat.path.filter(p => p.future), R, f, th);
-      ctx.setLineDash([]); polyline(n.sat.path.filter(p => !p.future), R, f, th);
-      ctx.globalAlpha = 1;
-    }
+  // satellite trails (selected satellite and bright sunlit ones)
+  const tgtSat = S.targetId ? S.byId.get(S.targetId) : null;
+  for (const [idx, pts] of paths) {
+    const isT = tgtSat && tgtSat.idx === idx;
+    ctx.strokeStyle = isT ? C.target : C.lit; ctx.globalAlpha = isT ? 0.6 : 0.25;
+    ctx.setLineDash([3, 4]); polyline(pts.filter(p => p.future), R, f, th);
+    ctx.setLineDash([]); polyline(pts.filter(p => !p.future), R, f, th);
   }
-  ctx.font = `11px ${css("--font-data")}`;
-  for (const n of S.now) {
-    if (n.el < 0) continue;
-    const q = project(n.az, n.el, R, f, th); if (!q.front) continue;
-    const isT = n === target;
-    ctx.fillStyle = isT ? C.target : n.lit ? C.lit : C.shadow;
-    if (n.lit) { ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 10; }
-    ctx.beginPath(); ctx.arc(q.x, q.y, isT ? 5 : n.lit ? 3.5 : 2.5, 0, 7); ctx.fill();
-    ctx.shadowBlur = 0;
-    if (isT) { ctx.strokeStyle = C.target; ctx.beginPath(); ctx.arc(q.x, q.y, 12, 0, 7); ctx.stroke(); }
-    if (n.lit || isT) { ctx.fillStyle = isT ? C.target : C.ink; ctx.fillText(n.sat.name, q.x + 8, q.y - 6); }
-    n.sx = q.x; n.sy = q.y;
-  }
-  for (const n of S.now) if (n.el < 0 || !project(n.az, n.el, R, f, th).front) n.sx = n.sy = null;
+  ctx.globalAlpha = 1;
 
-  // pointer arrow toward the target when it's off-screen
-  if (target) {
-    const q = project(target.az, target.el, R, f, th);
+  // satellites, batched by style so thousands of dots stay cheap
+  const sh = new Path2D(), shB = new Path2D(), lit = new Path2D(), litB = new Path2D();
+  const cx = W / 2, cy = H / 2, near = [];
+  if (tapX.length < S.now.length) { tapX = new Float32Array(S.now.length); tapY = new Float32Array(S.now.length); tapI = new Int32Array(S.now.length); }
+  tapN = 0;
+  for (const e of S.now) {
+    if (e.el < 0) continue;
+    const isT = tgtSat && e.sat === tgtSat;
+    if (!S.show[e.sat.cat] && !isT) continue;
+    const q = P(e.v);
+    if (!q.front || q.x < -20 || q.x > W + 20 || q.y < -20 || q.y > H + 20) continue;
+    const big = e.sat.cat === "bright";
+    const r = big ? (e.lit ? 3.4 : 2.4) : (e.lit ? 1.9 : 1.3);
+    const g = e.lit ? (big ? litB : lit) : (big ? shB : sh);
+    g.moveTo(q.x + r, q.y); g.arc(q.x, q.y, r, 0, 6.2832);
+    e.qx = q.x; e.qy = q.y; e.frame = frameNo;
+    tapX[tapN] = q.x; tapY[tapN] = q.y; tapI[tapN] = e.sat.idx; tapN++;
+    const d2 = (q.x - cx) ** 2 + (q.y - cy) ** 2;
+    if (d2 < 110 * 110) near.push([d2, e]);
+  }
+  ctx.fillStyle = C.shadow; ctx.globalAlpha = 0.45; ctx.fill(sh);
+  ctx.globalAlpha = 1; ctx.fill(shB);
+  ctx.fillStyle = C.lit; ctx.globalAlpha = 0.8; ctx.fill(lit);
+  ctx.globalAlpha = 1; ctx.shadowColor = C.lit; ctx.shadowBlur = 8; ctx.fill(litB); ctx.shadowBlur = 0;
+
+  // labels: bright sunlit satellites, plus whatever is closest to the crosshair
+  ctx.font = `11px ${FONT_M}`; ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+  const labeled = new Set();
+  // Skip any label that would overlap another label or the direction readout under the crosshair.
+  const boxes = [[cx - 75, cy + 14, 150, 26]];
+  const label = (e, color, force) => {
+    if (labeled.has(e)) return;
+    const w = ctx.measureText(e.sat.name).width, b = [e.qx + 6, e.qy - 17, w + 2, 14];
+    if (!force && boxes.some(o => b[0] < o[0] + o[2] && o[0] < b[0] + b[2] && b[1] < o[1] + o[3] && o[1] < b[1] + b[3])) return;
+    boxes.push(b); labeled.add(e); ctx.fillStyle = color; ctx.fillText(e.sat.name, e.qx + 7, e.qy - 6);
+  };
+  const tgt = tgtSat ? S.nowMap.get(tgtSat.idx) : null;
+  if (tgt && tgt.el > 0 && tgt.frame === frameNo) {
+    ctx.font = `600 12px ${FONT_M}`; label(tgt, C.target, true); ctx.font = `11px ${FONT_M}`;
+  }
+  let nb = 0;
+  for (const e of S.now) if (e.frame === frameNo && e.lit && e.sat.cat === "bright" && nb++ < 40) label(e, C.ink);
+  near.sort((a, b) => a[0] - b[0]);
+  for (let k = 0; k < Math.min(6, near.length); k++) label(near[k][1], C.dim);
+
+  // selected satellite: ring, or an arrow pointing to it
+  if (tgt && tgt.el > 0) {
+    if (tgt.frame === frameNo) {
+      ctx.strokeStyle = C.target; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(tgt.qx, tgt.qy, 12, 0, 7); ctx.stroke(); ctx.lineWidth = 1;
+    }
+    const q = P(tgt.v);
     const on = q.front && q.x > 20 && q.x < W - 20 && q.y > 60 && q.y < H - 120;
     if (!on) {
       let ang = Math.atan2(-q.sy, q.sx);
       if (Math.abs(q.sx) < 1e-3 && Math.abs(q.sy) < 1e-3) ang = -Math.PI / 2;
-      const rx = W / 2 - 40, ry = H / 2 - 110;
-      const x = W / 2 + Math.cos(ang) * rx, y = H / 2 + Math.sin(ang) * ry;
+      const x = W / 2 + Math.cos(ang) * (W / 2 - 40), y = H / 2 + Math.sin(ang) * (H / 2 - 110);
       ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
       ctx.fillStyle = C.target; ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-8, -10); ctx.lineTo(-3, 0); ctx.lineTo(-8, 10); ctx.closePath(); ctx.fill();
       ctx.restore();
     }
   }
 
-  // reticle
+  // crosshair
   ctx.strokeStyle = C.dim; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.arc(W / 2, H / 2, 16, 0, 7);
-  ctx.moveTo(W / 2 - 26, H / 2); ctx.lineTo(W / 2 - 18, H / 2); ctx.moveTo(W / 2 + 18, H / 2); ctx.lineTo(W / 2 + 26, H / 2);
+  ctx.beginPath(); ctx.arc(cx, cy, 16, 0, 7);
+  ctx.moveTo(cx - 26, cy); ctx.lineTo(cx - 18, cy); ctx.moveTo(cx + 18, cy); ctx.lineTo(cx + 26, cy);
   ctx.stroke();
   const vaz = viewAz(R), vel = Math.asin(Math.max(-1, Math.min(1, -R[8]))) * R2D;
   const txt = `${compassName(vaz)} ${vaz.toFixed(0).padStart(3, "0")}° · ${vel >= 0 ? "+" : ""}${vel.toFixed(0)}°`;
   if (readoutEl.textContent !== txt) readoutEl.textContent = txt;
 }
-const readoutEl = $("readout");
-function viewAz(R) { return ((Math.atan2(-R[2], -R[5]) * R2D) + 360) % 360; }
+
+// ---------- formatting ----------
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]); }
+const fmtKm = x => `${Math.round(x).toLocaleString("en")} km`;
+const fmtTime = ms => new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+function dayWord(ms) {
+  const d = new Date(ms), a = new Date(d), b = new Date();
+  a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0);
+  const n = Math.round((a - b) / 86400e3);
+  return n === 0 ? "today" : n === 1 ? "tomorrow" : d.toLocaleDateString("en", { weekday: "short" });
+}
+const fmtDayTime = ms => `${dayWord(ms)} ${fmtTime(ms)}`;
+function fmtLatLon(lat, lon) { return `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? "N" : "S"} ${Math.abs(lon).toFixed(2)}°${lon >= 0 ? "E" : "W"}`; }
+function ago(date) {
+  const days = (Date.now() - date) / 86400e3;
+  if (days < 1) return "today";
+  if (days < 60) return `${Math.round(days)} day${Math.round(days) === 1 ? "" : "s"} ago`;
+  if (days < 730) return `${Math.round(days / 30.4)} months ago`;
+  return `${Math.floor(days / 365.25)} years ago`;
+}
+const fmtDate = d => d.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" });
+function visText(lit) { return lit ? (sky.sunEl < -6 ? "sunlit, so you can see it" : "sunlit, but your sky is still bright") : "in Earth's shadow, so you can't see it"; }
+const rows = list => list.filter(r => r && r[1] != null && r[1] !== "").map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("");
 
 // ---------- UI ----------
-function showHint(msg, ms) { const h = $("hint"); h.textContent = msg; h.hidden = false; clearTimeout(showHint.t); if (ms) showHint.t = setTimeout(() => h.hidden = true, ms); }
+function showHint(msg, ms) { const h = $("hint"); h.textContent = msg; h.hidden = false; clearTimeout(showHint.t); showHint.t = ms ? setTimeout(() => h.hidden = true, ms) : 0; }
 
-function fmtTime(d) { return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
-function esc(s) { return s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]); }
+const visibleNow = () => S.now.filter(e => e.el > 0 && S.show[e.sat.cat]);
 
 function updateStatus() {
   const bits = [];
-  if (S.loc) bits.push(`${Math.abs(S.loc.lat).toFixed(2)}°${S.loc.lat >= 0 ? "N" : "S"} ${Math.abs(S.loc.lon).toFixed(2)}°${S.loc.lon >= 0 ? "E" : "W"}`);
-  const up = S.now.filter(n => n.el > 0);
-  bits.push(`${up.filter(n => n.lit).length} lit / ${up.length} up`);
-  if (sky.sunEl > -6) bits.push("sky too bright");
+  if (S.loc) bits.push(S.loc.name ? S.loc.name.split(",")[0] : fmtLatLon(S.loc.lat, S.loc.lon));
+  if (S.loading) bits.push(S.loading);
+  else { const up = visibleNow(); bits.push(`${up.filter(e => e.lit).length.toLocaleString("en")} sunlit · ${up.length.toLocaleString("en")} up`); }
+  if (S.tab === "now") $("sheetTitle").textContent = `Up now · ${visibleNow().length.toLocaleString("en")}`;
+  if (S.loc && sky.sunEl > -6) bits.push("sky still bright");
   $("status").textContent = bits.join(" · ");
   const needFlat = S.mode === "sensor" && S.anyEvent && !S.lastSensor;
   if (needFlat && !S.flatHint) { S.flatHint = true; showHint("Hold the phone flat for a moment to lock the compass."); }
   else if (!needFlat && S.flatHint) { S.flatHint = false; $("hint").hidden = true; }
 }
 
+function aboutLine(sat) {
+  const op = operatorOf(sat), c = catMem.get(sat.id), o = orbitInfo(sat), d = intlDesig(sat.l1);
+  const who = op?.op || ownerName(c);
+  const year = c?.launch ? c.launch.slice(0, 4) : d?.year;
+  const bits = [];
+  if (who) bits.push(who);
+  if (year) bits.push(`launched ${year}`);
+  if (o) bits.push(`${o.short}, ${Math.round((o.apo + o.peri) / 2).toLocaleString("en")} km up`);
+  return bits.join(" · ");
+}
+
 function updateCard() {
-  const n = S.now.find(x => x.sat.id === S.targetId);
   const card = $("card");
-  if (!S.targetId) { card.hidden = true; return; }
-  const sat = S.sats.find(s => s.id === S.targetId);
+  const sat = S.targetId ? S.byId.get(S.targetId) : null;
   if (!sat) { card.hidden = true; return; }
   card.hidden = false;
   $("cardName").textContent = sat.name;
+  const n = S.nowMap.get(sat.idx);
+  let where, meta;
   if (n && n.el > 0) {
-    $("cardWhere").textContent = `Look ${compassName(n.az)} (${n.az.toFixed(0)}°), ${n.el.toFixed(0)}° up`;
-    $("cardMeta").textContent = `${Math.round(n.range).toLocaleString()} km away · ${n.lit ? (sky.sunEl < -6 ? "sunlit, should be visible" : "sunlit, but the sky is still bright") : "in Earth's shadow, not visible"}`;
+    where = `Look ${compassName(n.az)} (${n.az.toFixed(0)}°), ${n.el.toFixed(0)}° up`;
+    meta = `${fmtKm(n.range)} away · ${visText(n.lit)}`;
+  } else if (!S.loc) {
+    where = "Set your location to see where it is"; meta = "";
   } else {
-    const p = S.passes?.find(p => p.sat.id === S.targetId && p.end > new Date());
-    $("cardWhere").textContent = "Below the horizon";
-    $("cardMeta").textContent = p ? `Next rises ${fmtTime(p.start)} in the ${compassName(p.startAz)}, peaks ${p.maxEl.toFixed(0)}° at ${fmtTime(p.maxTime)}` : "No pass above 15° in the next 12 hours";
+    where = "Below your horizon";
+    const p = nextPass(sat);
+    meta = p ? `Next rises ${fmtDayTime(p.start)} in the ${compassName(p.startAz)}, peaks ${p.maxEl.toFixed(0)}°${p.visible ? " (visible)" : ""}` : "Doesn't rise above 10° in the next 48 hours";
   }
+  $("cardWhere").textContent = where;
+  $("cardMeta").textContent = meta;
+  $("cardAbout").textContent = aboutLine(sat);
 }
 
 function setTarget(id) {
-  S.targetId = S.targetId === id ? null : id;
+  S.targetId = id || null;
   store.set("target", S.targetId);
-  updateCard(); renderSheet();
+  const sat = id ? S.byId.get(id) : null;
+  if (sat) catalog(sat).then(() => { updateCard(); if (S.detailsId === sat.id) renderAbout(sat); }).catch(() => {});
+  computePaths(); updateCard(); renderSheet();
+}
+
+// --- sheet: what's up now, search, passes ---
+function satRow(sat, extraClass) {
+  const n = S.nowMap.get(sat.idx), up = n && n.el > 0;
+  const cls = `row ${up ? (n.lit ? "lit" : "") : "down"} ${sat.id === S.targetId ? "sel" : ""} ${extraClass || ""}`;
+  const right = up ? `${compassName(n.az)} ${n.az.toFixed(0)}°<span class="sub">${n.el.toFixed(0)}° up</span>` : `<span class="sub">below horizon</span>`;
+  const sub = up ? `${CAT_LABEL[sat.cat]} · ${fmtKm(n.range)}` : `${CAT_LABEL[sat.cat]} · #${sat.id}`;
+  return `<button class="${cls}" data-id="${sat.id}"><span class="dot"></span><span class="nm">${esc(sat.name)}<span class="sub">${sub}</span></span><span class="num">${right}</span></button>`;
 }
 
 function renderSheet() {
-  const body = $("sheetBody");
+  const box = $("listBox");
   $("tabNow").setAttribute("aria-selected", S.tab === "now");
   $("tabPasses").setAttribute("aria-selected", S.tab === "passes");
-  const top = body.scrollTop;
+  $("nowTools").hidden = S.tab !== "now";
+  const body = $("sheetBody"), top = body.scrollTop;
   if (S.tab === "now") {
-    const up = S.now.filter(n => n.el > 0);
-    $("sheetTitle").textContent = `Up now · ${up.length}`;
-    if (!up.length) { body.innerHTML = `<div class="empty">${S.sats.length ? "Nothing from the list is above the horizon right now." : "Loading satellite data…"}</div>`; return; }
-    body.innerHTML = `<div class="legend"><span class="l">Sunlit (visible in a dark sky)</span><span>In Earth's shadow</span></div>` + up.map(n => `
-      <button class="row ${n.lit ? "lit" : ""} ${n.sat.id === S.targetId ? "sel" : ""}" data-id="${n.sat.id}">
-        <span class="dot"></span>
-        <span class="nm">${esc(n.sat.name)}<span class="sub">#${n.sat.id} · ${Math.round(n.range).toLocaleString()} km</span></span>
-        <span class="num">${compassName(n.az)} ${n.az.toFixed(0)}°<span class="sub">${n.el.toFixed(0)}° up</span></span>
-      </button>`).join("");
+    const q = $("findIn").value.trim();
+    const up = visibleNow();
+    $("sheetTitle").textContent = `Up now · ${up.length.toLocaleString("en")}`;
+    if (q) {
+      const Q = q.toUpperCase(), hits = [];
+      for (const s of S.sats) { if (s.nameU.includes(Q) || s.id === q) { hits.push(s); if (hits.length >= 60) break; } }
+      hits.sort((a, b) => ((S.nowMap.get(b.idx)?.el ?? -99) > 0) - ((S.nowMap.get(a.idx)?.el ?? -99) > 0));
+      box.innerHTML = hits.length ? hits.map(s => satRow(s)).join("") + (hits.length >= 60 ? `<div class="note">Showing the first 60 matches. Type more of the name to narrow it down.</div>` : "")
+        : `<div class="empty">No satellite matches "${esc(q)}".</div>`;
+    } else if (!up.length) {
+      box.innerHTML = `<div class="empty">${S.sats.length ? (S.loc ? "Nothing is above the horizon right now. Check which satellite types are switched on in Settings." : "Set your location in Settings to see what's overhead.") : "Loading satellite data…"}</div>`;
+    } else {
+      const list = up.slice().sort((a, b) => (b.lit - a.lit) || ((b.sat.cat === "bright") - (a.sat.cat === "bright")) || (b.el - a.el));
+      const shown = list.slice(0, 100);
+      box.innerHTML = `<div class="legend"><span class="l">Sunlit (visible in a dark sky)</span><span>In Earth's shadow</span></div>` +
+        shown.map(e => satRow(e.sat)).join("") +
+        (list.length > shown.length ? `<div class="note">Showing 100 of ${list.length.toLocaleString("en")} satellites above the horizon. Search above to find a specific one.</div>` : "");
+    }
   } else {
     $("sheetTitle").textContent = "Next 12 hours";
-    if (!S.passes) { body.innerHTML = `<div class="empty">Working out passes…</div>`; return; }
-    const list = S.passes.filter(p => p.end > new Date()).slice(0, 60);
-    if (!list.length) { body.innerHTML = `<div class="empty">No passes above 15° in the next 12 hours.</div>`; return; }
-    body.innerHTML = `<div class="legend"><span class="l">Visible pass (sunlit, dark sky)</span><span>Not visible</span></div>` + list.map(p => `
-      <button class="row ${p.visible ? "lit" : ""} ${p.sat.id === S.targetId ? "sel" : ""}" data-id="${p.sat.id}">
-        <span class="dot"></span>
-        <span class="nm">${esc(p.sat.name)}<span class="sub">${compassName(p.startAz)} → ${compassName(p.endAz)} · peak ${p.maxEl.toFixed(0)}°</span></span>
-        <span class="num">${fmtTime(p.start)}<span class="sub">${Math.max(1, Math.round((p.end - p.start) / 60000))} min</span></span>
-      </button>`).join("");
+    if (!S.passes) { box.innerHTML = `<div class="empty">${S.loc ? "Working out passes…" : "Set your location in Settings first."}</div>`; }
+    else {
+      const list = S.passes.filter(p => p.end > Date.now()).slice(0, 60);
+      box.innerHTML = `<div class="legend"><span class="l">Visible pass (sunlit, dark sky)</span><span>Not visible</span></div>` +
+        `<div class="note">Bright satellites and space stations passing above 15°. Tap any satellite, including Starlink, to see its own passes.</div>` +
+        (list.length ? list.map(p => `
+        <button class="row ${p.visible ? "lit" : ""} ${p.sat.id === S.targetId ? "sel" : ""}" data-id="${p.sat.id}">
+          <span class="dot"></span>
+          <span class="nm">${esc(p.sat.name)}<span class="sub">${compassName(p.startAz)} → ${compassName(p.endAz)} · peak ${p.maxEl.toFixed(0)}°</span></span>
+          <span class="num">${fmtTime(p.start)}<span class="sub">${dayWord(p.start)} · ${Math.max(1, Math.round((p.end - p.start) / 60000))} min</span></span>
+        </button>`).join("") : `<div class="empty">No passes above 15° in the next 12 hours.</div>`);
+    }
   }
   body.scrollTop = top;
 }
 
-$("sheetBody").addEventListener("click", e => { const b = e.target.closest(".row"); if (b) setTarget(b.dataset.id); });
+$("listBox").addEventListener("click", e => { const b = e.target.closest(".row"); if (b) openDetails(b.dataset.id); });
+$("findIn").addEventListener("input", () => { clearTimeout(renderSheet.t); renderSheet.t = setTimeout(renderSheet, 150); });
 $("grab").addEventListener("click", () => { $("sheet").classList.toggle("open"); sheetH(); });
 $("tabNow").addEventListener("click", () => { S.tab = "now"; $("sheet").classList.add("open"); renderSheet(); sheetH(); });
 $("tabPasses").addEventListener("click", () => { S.tab = "passes"; $("sheet").classList.add("open"); renderSheet(); sheetH(); });
-$("cardClose").addEventListener("click", () => setTarget(S.targetId));
+$("card").addEventListener("click", () => { if (S.targetId) openDetails(S.targetId); });
+$("card").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && S.targetId) { e.preventDefault(); openDetails(S.targetId); } });
+$("cardClose").addEventListener("click", e => { e.stopPropagation(); setTarget(null); });
 function sheetH() { document.documentElement.style.setProperty("--sheet-h", $("sheet").offsetHeight + "px"); }
 
-// tap a satellite on the sky to select it
+// --- details panel ---
+function openDetails(id) {
+  const sat = S.byId.get(id); if (!sat) return;
+  if (S.targetId !== id) setTarget(id);
+  S.detailsId = id;
+  $("details").hidden = false; $("details").scrollTop = 0;
+  $("detName").textContent = sat.name;
+  const d = intlDesig(sat.l1);
+  $("detChips").innerHTML = [`<span class="chip k">${esc(CAT_LABEL[sat.cat])}</span>`, `<span class="chip">NORAD ${esc(sat.id)}</span>`, d ? `<span class="chip">${esc(d.code)}</span>` : ""].join("");
+  renderOrbit(sat); renderNow(sat); renderAbout(sat, catMem.has(id) ? null : "loading");
+  catalog(sat).then(() => { if (S.detailsId === id) renderAbout(sat); }).catch(() => { if (S.detailsId === id) renderAbout(sat, "offline"); });
+  $("detPasses").innerHTML = `<p class="small">Working out passes…</p>`;
+  setTimeout(() => { if (S.detailsId === id) renderDetailPasses(sat); }, 30);
+}
+function closeDetails() { S.detailsId = null; $("details").hidden = true; }
+$("detBack").addEventListener("click", closeDetails);
+
+function renderNow(sat) {
+  const l = lookOne(sat, new Date());
+  if (!l) { $("detNow").innerHTML = rows([["Position", "Can't be worked out from the current data"]]); return; }
+  const up = l.el != null && l.el > 0;
+  $("detNow").innerHTML = rows([
+    ["Where to look", l.el == null ? "Set your location first" : up ? `${compassName(l.az)} (${l.az.toFixed(0)}°), ${l.el.toFixed(0)}° above the horizon` : "Below your horizon"],
+    ["Can you see it?", up ? visText(l.lit).replace(/^./, c => c.toUpperCase()) : (l.lit ? "Sunlit, but below your horizon" : "No, it's in Earth's shadow")],
+    ["Distance from you", l.range != null ? fmtKm(l.range) : null],
+    ["Height above Earth", fmtKm(l.alt)],
+    ["Speed", `${l.speed.toFixed(2)} km/s <span class="sub">${Math.round(l.speed * 3600).toLocaleString("en")} km/h</span>`],
+    ["Directly above", fmtLatLon(l.lat, l.lon)],
+  ]);
+}
+
+function renderAbout(sat, state) {
+  const op = operatorOf(sat), c = catMem.get(sat.id), d = intlDesig(sat.l1);
+  const launch = c?.launch ? new Date(c.launch + "T00:00:00Z") : null;
+  $("detAbout").innerHTML = rows([
+    ["Operator", op?.op ? esc(op.op) : null],
+    ["What it does", op?.role ? esc(op.role) : null],
+    ["Owner (country or organization)", c ? esc(ownerName(c) || "Unknown") : null],
+    ["Launched", launch ? `${fmtDate(launch)} <span class="sub">${ago(launch)}</span>` : (d ? `${d.year}` : null)],
+    ["Launch site", c?.site ? esc(CODES.SITES[c.site] || c.site) : null],
+    ["Object type", c?.type ? esc(CODES.TYPES[c.type] || c.type) : null],
+    ["Status", c?.status ? esc(STATUS[c.status] || "Unknown") : null],
+    ["Catalog", state === "loading" ? "Looking up owner and launch details…" : state === "offline" ? "Couldn't reach the satellite catalog. Check your connection and open this again." : null],
+  ]);
+}
+
+function renderOrbit(sat) {
+  const o = orbitInfo(sat);
+  if (!o) { $("detOrbit").innerHTML = rows([["Orbit", "No usable orbit data"]]); return; }
+  const height = Math.abs(o.apo - o.peri) < 40 ? `About ${fmtKm((o.apo + o.peri) / 2)}` : `${fmtKm(o.peri)} to ${fmtKm(o.apo)}`;
+  const period = o.period >= 120 ? `${Math.floor(o.period / 60)} h ${Math.round(o.period % 60)} min` : `${o.period.toFixed(1)} minutes`;
+  const reach = o.inc <= 90 ? o.inc : 180 - o.inc;
+  const epoch = tleEpoch(sat.l1);
+  $("detOrbit").innerHTML = rows([
+    ["Orbit type", `${esc(o.cls)}<span class="sub">${esc(o.note)}</span>`],
+    ["Height", height],
+    ["Time for one orbit", `${period}<span class="sub">${o.perDay.toFixed(1)} orbits a day</span>`],
+    ["Inclination", `${o.inc.toFixed(1)}°<span class="sub">${o.inc > 90 ? "Retrograde, " : ""}passes over latitudes up to ${reach.toFixed(0)}° N and S</span>`],
+    ["Eccentricity", `${o.e.toFixed(4)}<span class="sub">0 is a perfect circle</span>`],
+    ["Orbit data from", `${fmtDate(epoch)}<span class="sub">${ago(epoch)}</span>`],
+  ]);
+}
+
+function renderDetailPasses(sat) {
+  const box = $("detPasses");
+  if (!S.loc) { box.innerHTML = `<p class="small">Set your location in Settings to see passes.</p>`; return; }
+  const o = orbitInfo(sat);
+  if (o && o.short === "GEO") {
+    const l = lookOne(sat, new Date());
+    box.innerHTML = `<p class="small">${l && l.el > 0 ? `It stays at about ${l.el.toFixed(0)}° up in the ${compassName(l.az)} and doesn't rise or set. You'll need binoculars or a telescope to spot it.` : "It never rises above your horizon from where you are."}</p>`;
+    return;
+  }
+  const list = passesFor(sat).filter(p => p.end > Date.now()).slice(0, 6);
+  box.innerHTML = list.length ? list.map(p => `
+    <div class="passrow ${p.visible ? "lit" : ""}">
+      <span class="dot"></span>
+      <span>${fmtDayTime(p.start)}<span class="sub">${compassName(p.startAz)} → ${compassName(p.endAz)} · peak ${p.maxEl.toFixed(0)}° at ${fmtTime(p.maxTime)}</span></span>
+      <span class="num">${Math.max(1, Math.round((p.end - p.start) / 60000))} min<span class="sub">${p.visible ? "visible" : "not visible"}</span></span>
+    </div>`).join("") : `<p class="small">No passes above 10° in the next 48 hours.</p>`;
+}
+
+// --- sky taps ---
+let drag = null, dragMoved = false;
 cv.addEventListener("click", e => {
   if (dragMoved) return;
-  let best = null, bd = 28 * 28;
-  for (const n of S.now) { if (n.sx == null) continue; const d = (n.sx - e.clientX) ** 2 + (n.sy - e.clientY) ** 2; if (d < bd) { bd = d; best = n; } }
-  if (best) setTarget(best.sat.id);
+  let best = -1, bd = 26 * 26;
+  for (let k = 0; k < tapN; k++) { const d = (tapX[k] - e.clientX) ** 2 + (tapY[k] - e.clientY) ** 2; if (d < bd) { bd = d; best = tapI[k]; } }
+  if (best < 0) return;
+  const sat = S.sats[best];
+  if (sat.id === S.targetId) openDetails(sat.id); else setTarget(sat.id);
 });
-
-// drag to look (no-sensor mode)
-let drag = null, dragMoved = false;
 cv.addEventListener("pointerdown", e => { drag = { x: e.clientX, y: e.clientY, az: S.view.az, el: S.view.el }; dragMoved = false; });
 addEventListener("pointermove", e => {
   if (!drag || S.mode !== "drag") return;
-  const k = S.vfov / H;
-  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  const k = S.vfov / H, dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   if (Math.abs(dx) + Math.abs(dy) > 4) dragMoved = true;
   S.view.az = (drag.az - dx * k + 360) % 360;
   S.view.el = Math.max(-10, Math.min(90, drag.el + dy * k));
@@ -682,54 +1076,102 @@ $("redBtn").addEventListener("click", () => {
 });
 if (store.get("red", false)) { document.body.classList.add("red"); $("redBtn").setAttribute("aria-pressed", "true"); }
 
-// settings
+// --- settings ---
+function updateLocNow() {
+  $("locNow").innerHTML = S.loc
+    ? `${esc(S.loc.name || "Custom coordinates")}<span class="sub">${fmtLatLon(S.loc.lat, S.loc.lon)}${S.loc.h ? ` · ${Math.round(S.loc.h).toLocaleString("en")} m` : ""}</span>`
+    : `Not set yet<span class="sub">Search for your town below</span>`;
+}
+function updateTleInfo() {
+  const n = S.counts, total = n.bright + n.starlink + n.other;
+  $("cntBright").textContent = n.bright.toLocaleString("en");
+  $("cntStarlink").textContent = n.starlink.toLocaleString("en");
+  $("cntOther").textContent = n.other.toLocaleString("en");
+  $("tleInfo").textContent = total ? `${total.toLocaleString("en")} satellites from CelesTrak${S.tleTime ? `, downloaded ${fmtDate(new Date(S.tleTime))} ${fmtTime(S.tleTime)}` : ""}. Updates itself every 12 hours.` : "No satellite data yet.";
+}
 function openSettings() {
   $("latIn").value = S.loc?.lat ?? ""; $("lonIn").value = S.loc?.lon ?? "";
   $("corrIn").value = S.corr; $("corrVal").textContent = (S.corr > 0 ? "+" : "") + S.corr + "°";
-  updateTleInfo(); $("settings").hidden = false;
+  $("showBright").checked = S.show.bright; $("showStarlink").checked = S.show.starlink; $("showOther").checked = S.show.other;
+  $("locErr").hidden = true;
+  updateLocNow(); updateTleInfo(); $("settings").hidden = false;
 }
-function updateTleInfo() {
-  const el = $("tleInfo"); if (!el) return;
-  el.textContent = S.sats.length ? `${S.sats.length} satellites from CelesTrak (bright satellites and space stations)${S.tleTime ? `, downloaded ${new Date(S.tleTime).toLocaleString()}` : ""}.` : "No satellite data yet.";
+function setLocation(loc) {
+  S.loc = loc; store.set("loc", loc);
+  sendObs(); S.passes = null; S.passesAt = 0; S.passJob++;
+  computeSky(); updateLocNow(); updateStatus(); renderSheet(); updateCard();
 }
 $("setBtn").addEventListener("click", openSettings);
+$("setDone").addEventListener("click", () => {
+  if (!S.loc) { $("locErr").textContent = "Choose a location first, so the app knows which part of the sky you see."; $("locErr").hidden = false; return; }
+  $("settings").hidden = true;
+});
 $("corrIn").addEventListener("input", e => { S.corr = +e.target.value; $("corrVal").textContent = (S.corr > 0 ? "+" : "") + S.corr + "°"; store.set("corr", S.corr); });
+for (const [id, cat] of [["showBright", "bright"], ["showStarlink", "starlink"], ["showOther", "other"]]) {
+  $(id).addEventListener("change", e => { S.show[cat] = e.target.checked; store.set("show", S.show); computePaths(); renderSheet(); updateStatus(); });
+}
+
+let placeTimer = 0, placeCtl = null, placeList = [];
+$("placeIn").addEventListener("input", () => { clearTimeout(placeTimer); placeTimer = setTimeout(searchPlaces, 300); });
+async function searchPlaces() {
+  const q = $("placeIn").value.trim(), box = $("placeResults");
+  if (q.length < 2) { box.innerHTML = ""; return; }
+  if (placeCtl) placeCtl.abort();
+  placeCtl = new AbortController();
+  box.innerHTML = `<p class="small">Searching…</p>`;
+  try {
+    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&language=en&format=json`, { signal: placeCtl.signal });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    placeList = (await r.json()).results || [];
+    box.innerHTML = placeList.length ? placeList.map((p, i) => `
+      <button class="place" data-i="${i}"><span>${esc(p.name)}</span>
+      <span class="sub">${esc([p.admin1, p.country].filter(Boolean).join(", "))} · ${fmtLatLon(p.latitude, p.longitude)}</span></button>`).join("")
+      : `<p class="small">No places found for "${esc(q)}". Try another spelling or a larger town nearby.</p>`;
+  } catch (e) {
+    if (e.name !== "AbortError") box.innerHTML = `<p class="err">Couldn't search right now. Check your connection, or use GPS or coordinates instead.</p>`;
+  }
+}
+$("placeResults").addEventListener("click", e => {
+  const b = e.target.closest(".place"); if (!b) return;
+  const p = placeList[+b.dataset.i];
+  setLocation({ lat: +p.latitude.toFixed(4), lon: +p.longitude.toFixed(4), h: p.elevation || 0, name: [p.name, p.admin1 || p.country].filter(Boolean).join(", "), src: "search" });
+  $("placeResults").innerHTML = ""; $("placeIn").value = ""; $("locErr").hidden = true;
+});
 $("gpsBtn").addEventListener("click", async () => {
-  $("gpsBtn").textContent = "Finding you…";
-  try { const l = await getLocation(); $("latIn").value = l.lat; $("lonIn").value = l.lon; $("gpsBtn").textContent = "Use my current location"; }
-  catch (e) { $("gpsBtn").textContent = e.message; }
+  const b = $("gpsBtn"); b.textContent = "Finding you…";
+  try { const l = await getLocation(); setLocation({ ...l, name: "Your GPS location", src: "gps" }); $("locErr").hidden = true; }
+  catch (e) { $("locErr").textContent = e.message; $("locErr").hidden = false; }
+  b.textContent = "Use my phone's GPS instead";
+});
+$("coordBtn").addEventListener("click", () => {
+  const lat = parseFloat($("latIn").value), lon = parseFloat($("lonIn").value);
+  if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+    $("locErr").textContent = "Latitude must be between -90 and 90, and longitude between -180 and 180."; $("locErr").hidden = false; return;
+  }
+  setLocation({ lat, lon, h: 0, name: null, src: "manual" }); $("locErr").hidden = true;
 });
 $("refreshBtn").addEventListener("click", async () => {
-  $("refreshBtn").textContent = "Downloading…";
-  await loadSats(true); computeNow();
-  $("refreshBtn").textContent = "Download fresh satellite data";
-});
-$("setDone").addEventListener("click", () => {
-  const lat = parseFloat($("latIn").value), lon = parseFloat($("lonIn").value);
-  if (isFinite(lat) && isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
-    const changed = !S.loc || S.loc.lat !== lat || S.loc.lon !== lon;
-    S.loc = { lat, lon, h: S.loc?.h || 0 }; store.set("loc", S.loc);
-    if (changed) { S.passes = null; S.passesAt = 0; passJob++; computeNow(); renderSheet(); }
-  }
-  $("settings").hidden = true;
-  if (!S.mode) begin("drag");
+  const b = $("refreshBtn"); b.textContent = "Downloading…"; b.disabled = true;
+  await loadSats(true);
+  b.textContent = "Download fresh satellite data"; b.disabled = false;
 });
 
 // ---------- start ----------
 async function begin(mode) {
   $("introErr").hidden = true;
-  try {
-    if (mode === "sensor") await startSensors(); else S.mode = "drag";
-  } catch (e) { $("introErr").textContent = e.message; $("introErr").hidden = false; return; }
+  try { if (mode === "sensor") await startSensors(); else S.mode = "drag"; }
+  catch (e) { $("introErr").textContent = e.message; $("introErr").hidden = false; return; }
   $("intro").hidden = true;
   try { await navigator.wakeLock?.request("screen"); } catch {}
-  try { S.loc = await getLocation(); store.set("loc", S.loc); }
-  catch (e) { if (!S.loc) { openSettings(); showHint(e.message, 6000); } }
-  computeNow(); renderSheet(); updateCard();
+  // A town picked by hand is kept; otherwise refresh from GPS.
+  if (!S.loc || !S.loc.src || S.loc.src === "gps") {
+    try { const l = await getLocation(); setLocation({ ...l, name: "Your GPS location", src: "gps" }); }
+    catch (e) { if (!S.loc) { openSettings(); showHint(e.message, 6000); } }
+  }
+  renderSheet(); updateCard();
 }
 $("startBtn").addEventListener("click", () => begin("sensor"));
 $("dragBtn").addEventListener("click", () => begin("drag"));
-
 document.addEventListener("visibilitychange", async () => {
   if (!document.hidden && S.mode) { try { await navigator.wakeLock?.request("screen"); } catch {} }
 });
@@ -738,12 +1180,18 @@ async function init() {
   loadColors(); resize(); sheetH();
   requestAnimationFrame(draw);
   if (typeof satellite === "undefined") { $("status").textContent = "Couldn't load the orbit library. Check your connection and reload."; return; }
-  await loadSats(false);
-  computeNow(); renderSheet(); updateStatus();
-  setInterval(() => { computeNow(); updateStatus(); updateCard(); }, 250);
-  setInterval(() => { if (S.tab === "now" && $("sheet").classList.contains("open")) renderSheet(); }, 2000);
-  setInterval(() => { if (S.loc && S.sats.length && Date.now() - (S.passesAt || 0) > 30 * 60e3) computePasses(); }, 2000);
+  sendObs(); computeSky();
+  setInterval(requestTick, 250);
+  setInterval(() => { computeSky(); updateStatus(); updateCard(); if (S.detailsId) renderNow(S.byId.get(S.detailsId)); }, 1000);
+  setInterval(computePaths, 4000);
+  setInterval(() => { if (S.tab === "now" && $("sheet").classList.contains("open") && document.activeElement !== $("findIn")) renderSheet(); }, 2000);
+  setInterval(() => { if (S.loc && S.counts.bright && Date.now() - S.passesAt > 30 * 60e3) requestPasses(); }, 2000);
+  // If the big list was refused, try again once CelesTrak's 2-hour wait is over.
+  setInterval(() => {
+    if (!S.counts.starlink && !S.counts.other && !/^Loading/.test(S.loading) && Date.now() - store.get("tleFail_active", 0) > 2 * 3600e3) loadActive(false);
+  }, 5 * 60e3);
   new ResizeObserver(sheetH).observe($("sheet"));
+  await loadSats(false);
 }
 init();
 </script>
