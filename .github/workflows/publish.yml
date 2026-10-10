@@ -1,0 +1,62 @@
+# Publishes the app to GitHub Pages together with a fresh copy of the CelesTrak satellite lists.
+# Phones then download the lists from this site instead of CelesTrak, which only allows each
+# internet connection one download of a list every 2 hours.
+# Runs on every push, every 4 hours, and on demand (Actions tab -> Run workflow).
+# Requires Settings -> Pages -> Source: "GitHub Actions".
+name: Publish app and satellite data
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 */4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Collect the app files
+        run: |
+          mkdir -p site/data
+          cp index.html worker.js codes.js manifest.webmanifest icon.svg icon-180.png icon-512.png tle-fallback.txt site/
+
+      - name: Download satellite lists (keep the last good copy if CelesTrak says no)
+        run: |
+          for g in active visual stations; do
+            f="site/data/$g.txt"
+            curl -sSL --retry 2 -A "Overhead satellite app (${{ github.repository }})" \
+              "https://celestrak.org/NORAD/elements/gp.php?GROUP=$g&FORMAT=tle" -o "$f" || true
+            if grep -q '^1 [0-9 ]\{5\}' "$f" 2>/dev/null; then
+              echo "$g: fresh from CelesTrak ($(wc -l < "$f") lines)"
+            else
+              echo "$g: CelesTrak gave no data, reusing the published copy"
+              curl -sSL "${{ steps.pages.outputs.base_url }}/data/$g.txt" -o "$f" || true
+              grep -q '^1 [0-9 ]\{5\}' "$f" 2>/dev/null || rm -f "$f"
+            fi
+          done
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > site/data/updated.txt
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
