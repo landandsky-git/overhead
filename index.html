@@ -171,7 +171,7 @@ dd .sub { display: block; font-size: 12px; color: var(--dim); }
 <div class="overlay" id="intro">
   <div class="intro">
     <h1>Overhead</h1>
-    <p>Point your phone at the night sky to see which satellites are there. Tracks about 16,000 satellites, including Starlink. Gold ones are lit by the sun and can be seen with the naked eye when it's dark.</p>
+    <p>Point your phone at the night sky to see which satellites are there. Tracks about 16,000 satellites, including Starlink. Gold dots are lit by the sun, and the bigger the dot, the brighter the satellite looks.</p>
     <button class="primary" id="startBtn">Start</button>
     <button class="secondary" id="dragBtn">Use without sensors (drag to look)</button>
     <p class="small">Needs location and motion access. Works best outdoors, away from metal and magnets, after waving the phone in a figure-8 to settle the compass.</p>
@@ -207,6 +207,8 @@ dd .sub { display: block; font-size: 12px; color: var(--dim); }
       <label class="check"><input type="checkbox" id="showBright"><span>Bright satellites, rocket stages and space stations</span><span class="count" id="cntBright"></span></label>
       <label class="check"><input type="checkbox" id="showStarlink"><span>Starlink</span><span class="count" id="cntStarlink"></span></label>
       <label class="check"><input type="checkbox" id="showOther"><span>All other active satellites</span><span class="count" id="cntOther"></span></label>
+      <label class="check"><input type="checkbox" id="eyeOnly"><span>Only show satellites bright enough to see without binoculars</span><span class="count"></span></label>
+      <p class="small">Sunlit satellites are drawn bigger and brighter the brighter they should look, on the same scale as the stars. Brightness is estimated from each satellite's type, distance and angle to the sun, so it can be off by about one magnitude.</p>
     </section>
 
     <section class="group">
@@ -254,6 +256,7 @@ const S = {
   loc: store.get("loc", null),          // {lat, lon, h, name, src: "search" | "gps" | "manual"}
   corr: store.get("corr", 0),
   show: Object.assign({ bright: true, starlink: true, other: true }, store.get("show", {})),
+  eyeOnly: store.get("eyeOnly", false),
   sats: [], byId: new Map(), counts: { bright: 0, starlink: 0, other: 0 },
   gen: 0, now: [], nowMap: new Map(),   // positions from the worker: idx -> {sat, az, el, range, lit, v}
   targetId: store.get("target", null),
@@ -351,11 +354,17 @@ function addSats(list, cat) {
     const raw = t.name.replace(/^0 /, "").trim();
     const c = cat || (/^STARLINK/i.test(raw) ? "starlink" : "other");
     const sat = { idx: S.sats.length, id, raw, name: prettyName(raw), nameU: raw.toUpperCase(), l1: t.l1, l2: t.l2, cat: c };
+    sat.m0 = stdMag(sat);
     S.sats.push(sat); S.byId.set(id, sat); S.counts[c]++;
-    out.push([t.l1, t.l2]);
+    out.push([t.l1, t.l2, sat.m0]);
   }
   worker.postMessage({ type: "add", list: out });
   updateTleInfo();
+}
+
+function stdMag(sat) {
+  for (const [re, m] of CODES.STD_MAG || []) if (re.test(sat.nameU)) return m;
+  return sat.cat === "bright" ? 3.5 : 5.5;
 }
 
 function prettyName(n) {
@@ -383,10 +392,10 @@ function sendObs() { if (S.loc) worker.postMessage({ type: "obs", lat: S.loc.lat
 
 function applyPositions(d) {
   const now = [], map = new Map();
-  for (let k = 0; k < d.length; k += 5) {
+  for (let k = 0; k < d.length; k += 6) {
     const sat = S.sats[d[k]];
     if (!sat) continue;
-    const e = { sat, az: d[k + 1], el: d[k + 2], range: d[k + 3], lit: d[k + 4] === 1, v: enu(d[k + 1], d[k + 2]) };
+    const e = { sat, az: d[k + 1], el: d[k + 2], range: d[k + 3], lit: d[k + 4] === 1, mag: d[k + 5], v: enu(d[k + 1], d[k + 2]) };
     now.push(e); map.set(sat.idx, e);
   }
   S.now = now; S.nowMap = map;
@@ -428,6 +437,21 @@ function inShadow(p, s) {
   return px * px + py * py + pz * pz < EARTH_R * EARTH_R;
 }
 function observerGd() { return { latitude: S.loc.lat * D2R, longitude: S.loc.lon * D2R, height: (S.loc.h || 0) / 1000 }; }
+const observerEci = gmst => satellite.ecfToEci(satellite.geodeticToEcf(observerGd()), gmst);
+// Apparent magnitude (same model as worker.js): standard magnitude, scaled for distance,
+// how much of the lit side faces us (diffuse sphere), and haze near the horizon.
+function magnitude(m0, p, sunV, obs, range, el) {
+  const ox = obs.x - p.x, oy = obs.y - p.y, oz = obs.z - p.z, d = Math.hypot(ox, oy, oz);
+  const phi = Math.acos(Math.max(-1, Math.min(1, (sunV.x * ox + sunV.y * oy + sunV.z * oz) / d)));
+  const F = Math.sin(phi) + (Math.PI - phi) * Math.cos(phi);
+  const s = Math.sin(Math.max(el, 0.5) * D2R), airmass = 1 / (s + 0.025 * Math.exp(-11 * s));
+  return Math.min(15, m0 + 5 * Math.log10(range / 1000) - 2.5 * Math.log10(Math.max(F, 1e-3)) + 0.2 * (airmass - 1));
+}
+const NAKED_EYE = 6;   // faintest magnitude you can see without binoculars in a dark sky
+function brightWord(mag) {
+  return mag < 0 ? "very bright" : mag < 2 ? "bright" : mag < 3.5 ? "easy to see" : mag < 5 ? "visible in a dark sky"
+    : mag < NAKED_EYE + 0.5 ? "faint, needs a very dark sky" : "too faint to see without binoculars";
+}
 function enu(az, el) { az *= D2R; el *= D2R; return [Math.sin(az) * Math.cos(el), Math.cos(az) * Math.cos(el), Math.sin(el)]; }
 
 // Bright stars for orientation: [name, RA hours, Dec deg, mag]
@@ -474,6 +498,7 @@ function lookOne(sat, date) {
   if (S.loc) {
     const la = satellite.ecfToLookAngles(observerGd(), satellite.eciToEcf(pv.position, gmst));
     Object.assign(out, { az: ((la.azimuth * R2D) + 360) % 360, el: la.elevation * R2D, range: la.rangeSat });
+    if (out.lit && out.el > -1) out.mag = magnitude(sat.m0, pv.position, sunPos(date).v, observerEci(gmst), out.range, out.el);
   }
   return out;
 }
@@ -512,11 +537,14 @@ function passesFor(sat) {
       const la = satellite.ecfToLookAngles(gd, satellite.eciToEcf(pv.position, gmst));
       const el = la.elevation * R2D, az = ((la.azimuth * R2D) + 360) % 360;
       if (el > 0) {
-        if (!cur) cur = { start: +date, startAz: az, maxEl: -90, visible: false };
+        if (!cur) cur = { start: +date, startAz: az, maxEl: -90, visible: false, mag: 99 };
         if (el > cur.maxEl) { cur.maxEl = el; cur.maxTime = +date; cur.maxAz = az; }
-        if (el > 10 && !cur.visible) {
+        if (el > 10) {
           const sun = sunPos(date);
-          if (raDecToAltAz(sun.ra, sun.dec, gmst, lat, lon).el < -6 && !inShadow(pv.position, sun.v)) cur.visible = true;
+          if (raDecToAltAz(sun.ra, sun.dec, gmst, lat, lon).el < -6 && !inShadow(pv.position, sun.v)) {
+            cur.mag = Math.min(cur.mag, magnitude(sat.m0, pv.position, sun.v, observerEci(gmst), la.rangeSat, el));
+            if (cur.mag < NAKED_EYE) cur.visible = true;
+          }
         }
         cur.end = +date; cur.endAz = az;
       } else if (cur) { if (cur.maxEl >= 10) list.push(cur); cur = null; if (list.length >= 8) break; }
@@ -694,6 +722,12 @@ for (const alt of [30, 60]) { const pts = []; for (let a = 0; a <= 360; a += 5) 
 for (let a = 0; a < 360; a += 30) { const pts = []; for (let e = 0; e <= 90; e += 5) pts.push({ v: enu(a, e) }); GRID.push(pts); }
 const HORIZON = []; for (let a = 0; a <= 360; a += 3) HORIZON.push({ v: enu(a, 0) });
 
+// One size and brightness scale for stars and satellites, so you can compare them on screen.
+const magRadius = m => Math.max(0.7, Math.min(5.5, 4.2 - 0.6 * m));
+const magAlpha = m => Math.max(0.3, Math.min(1, 1.1 - 0.11 * m));
+const MAG_STEPS = [-2, -1, 0, 1, 2, 3, 4, 5, 6, 7];
+const magStep = m => Math.max(0, Math.min(MAG_STEPS.length - 1, Math.floor(m + 2.5)));
+
 let tapX = new Float32Array(32768), tapY = new Float32Array(32768), tapI = new Int32Array(32768), tapN = 0, frameNo = 0;
 const readoutEl = $("readout");
 
@@ -737,7 +771,8 @@ function draw() {
   for (const s of sky.stars) {
     if (s.el < -1) continue;
     const q = P(s.v); if (!q.front) continue;
-    ctx.fillStyle = C.star; ctx.beginPath(); ctx.arc(q.x, q.y, Math.max(0.8, 2.6 - s.mag * 0.6), 0, 7); ctx.fill();
+    ctx.fillStyle = C.star; ctx.globalAlpha = magAlpha(s.mag);
+    ctx.beginPath(); ctx.arc(q.x, q.y, magRadius(s.mag), 0, 7); ctx.fill(); ctx.globalAlpha = 1;
     if (s.mag < 1.3) { ctx.fillStyle = C.dim; ctx.fillText(s.name, q.x + 5, q.y + 8); }
   }
 
@@ -751,30 +786,37 @@ function draw() {
   }
   ctx.globalAlpha = 1;
 
-  // satellites, batched by style so thousands of dots stay cheap
-  const sh = new Path2D(), shB = new Path2D(), lit = new Path2D(), litB = new Path2D();
+  // satellites: sunlit ones sized and faded by estimated brightness, on the same scale as the stars.
+  // Dots are batched into one path per magnitude step so thousands stay cheap to draw.
+  const sh = new Path2D(), bins = MAG_STEPS.map(() => new Path2D()), litDrawn = [];
   const cx = W / 2, cy = H / 2, near = [];
   if (tapX.length < S.now.length) { tapX = new Float32Array(S.now.length); tapY = new Float32Array(S.now.length); tapI = new Int32Array(S.now.length); }
   tapN = 0;
   for (const e of S.now) {
     if (e.el < 0) continue;
     const isT = tgtSat && e.sat === tgtSat;
-    if (!S.show[e.sat.cat] && !isT) continue;
+    if (!isT && (!S.show[e.sat.cat] || (S.eyeOnly && !(e.lit && e.mag <= NAKED_EYE)))) continue;
     const q = P(e.v);
     if (!q.front || q.x < -20 || q.x > W + 20 || q.y < -20 || q.y > H + 20) continue;
-    const big = e.sat.cat === "bright";
-    const r = big ? (e.lit ? 3.4 : 2.4) : (e.lit ? 1.9 : 1.3);
-    const g = e.lit ? (big ? litB : lit) : (big ? shB : sh);
-    g.moveTo(q.x + r, q.y); g.arc(q.x, q.y, r, 0, 6.2832);
+    if (e.lit) {
+      const r = magRadius(e.mag);
+      bins[magStep(e.mag)].moveTo(q.x + r, q.y); bins[magStep(e.mag)].arc(q.x, q.y, r, 0, 6.2832);
+      litDrawn.push(e);
+    } else {
+      sh.moveTo(q.x + 1.3, q.y); sh.arc(q.x, q.y, 1.3, 0, 6.2832);
+    }
     e.qx = q.x; e.qy = q.y; e.frame = frameNo;
     tapX[tapN] = q.x; tapY[tapN] = q.y; tapI[tapN] = e.sat.idx; tapN++;
     const d2 = (q.x - cx) ** 2 + (q.y - cy) ** 2;
     if (d2 < 110 * 110) near.push([d2, e]);
   }
-  ctx.fillStyle = C.shadow; ctx.globalAlpha = 0.45; ctx.fill(sh);
-  ctx.globalAlpha = 1; ctx.fill(shB);
-  ctx.fillStyle = C.lit; ctx.globalAlpha = 0.8; ctx.fill(lit);
-  ctx.globalAlpha = 1; ctx.shadowColor = C.lit; ctx.shadowBlur = 8; ctx.fill(litB); ctx.shadowBlur = 0;
+  ctx.fillStyle = C.shadow; ctx.globalAlpha = 0.5; ctx.fill(sh);
+  ctx.fillStyle = C.lit; ctx.shadowColor = C.lit;
+  for (let b = MAG_STEPS.length - 1; b >= 0; b--) {
+    ctx.globalAlpha = magAlpha(MAG_STEPS[b]); ctx.shadowBlur = MAG_STEPS[b] <= 1 ? 10 : MAG_STEPS[b] <= 3 ? 4 : 0;
+    ctx.fill(bins[b]);
+  }
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
 
   // labels: bright sunlit satellites, plus whatever is closest to the crosshair
   ctx.font = `11px ${FONT_M}`; ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
@@ -791,8 +833,8 @@ function draw() {
   if (tgt && tgt.el > 0 && tgt.frame === frameNo) {
     ctx.font = `600 12px ${FONT_M}`; label(tgt, C.target, true); ctx.font = `11px ${FONT_M}`;
   }
-  let nb = 0;
-  for (const e of S.now) if (e.frame === frameNo && e.lit && e.sat.cat === "bright" && nb++ < 40) label(e, C.ink);
+  litDrawn.sort((a, b) => a.mag - b.mag);
+  for (let k = 0; k < Math.min(30, litDrawn.length) && litDrawn[k].mag < 4; k++) label(litDrawn[k], C.ink);
   near.sort((a, b) => a[0] - b[0]);
   for (let k = 0; k < Math.min(6, near.length); k++) label(near[k][1], C.dim);
 
@@ -844,19 +886,28 @@ function ago(date) {
   return `${Math.floor(days / 365.25)} years ago`;
 }
 const fmtDate = d => d.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" });
-function visText(lit) { return lit ? (sky.sunEl < -6 ? "sunlit, so you can see it" : "sunlit, but your sky is still bright") : "in Earth's shadow, so you can't see it"; }
+function visText(lit, mag) {
+  if (!lit) return "in Earth's shadow, so you can't see it";
+  if (sky.sunEl >= -6) return "sunlit, but your sky is still bright";
+  return mag != null ? `magnitude ${mag.toFixed(1)}, ${brightWord(mag)}` : "sunlit";
+}
+const magText = m => m != null && m < 50 ? `mag ${m.toFixed(1)}` : "";
 const rows = list => list.filter(r => r && r[1] != null && r[1] !== "").map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("");
 
 // ---------- UI ----------
 function showHint(msg, ms) { const h = $("hint"); h.textContent = msg; h.hidden = false; clearTimeout(showHint.t); showHint.t = ms ? setTimeout(() => h.hidden = true, ms) : 0; }
 
-const visibleNow = () => S.now.filter(e => e.el > 0 && S.show[e.sat.cat]);
+const visibleNow = () => S.now.filter(e => e.el > 0 && S.show[e.sat.cat] && (!S.eyeOnly || (e.lit && e.mag <= NAKED_EYE)));
 
 function updateStatus() {
   const bits = [];
   if (S.loc) bits.push(S.loc.name ? S.loc.name.split(",")[0] : fmtLatLon(S.loc.lat, S.loc.lon));
   if (S.loading) bits.push(S.loading);
-  else { const up = visibleNow(); bits.push(`${up.filter(e => e.lit).length.toLocaleString("en")} sunlit · ${up.length.toLocaleString("en")} up`); }
+  else {
+    const up = visibleNow();
+    if (sky.sunEl < -6) bits.push(`${up.filter(e => e.lit && e.mag <= NAKED_EYE).length.toLocaleString("en")} visible by eye`);
+    bits.push(`${up.length.toLocaleString("en")} up`);
+  }
   if (S.tab === "now") $("sheetTitle").textContent = `Up now · ${visibleNow().length.toLocaleString("en")}`;
   if (S.loc && sky.sunEl > -6) bits.push("sky still bright");
   $("status").textContent = bits.join(" · ");
@@ -886,7 +937,7 @@ function updateCard() {
   let where, meta;
   if (n && n.el > 0) {
     where = `Look ${compassName(n.az)} (${n.az.toFixed(0)}°), ${n.el.toFixed(0)}° up`;
-    meta = `${fmtKm(n.range)} away · ${visText(n.lit)}`;
+    meta = `${fmtKm(n.range)} away · ${visText(n.lit, n.mag)}`;
   } else if (!S.loc) {
     where = "Set your location to see where it is"; meta = "";
   } else {
@@ -912,7 +963,7 @@ function satRow(sat, extraClass) {
   const n = S.nowMap.get(sat.idx), up = n && n.el > 0;
   const cls = `row ${up ? (n.lit ? "lit" : "") : "down"} ${sat.id === S.targetId ? "sel" : ""} ${extraClass || ""}`;
   const right = up ? `${compassName(n.az)} ${n.az.toFixed(0)}°<span class="sub">${n.el.toFixed(0)}° up</span>` : `<span class="sub">below horizon</span>`;
-  const sub = up ? `${CAT_LABEL[sat.cat]} · ${fmtKm(n.range)}` : `${CAT_LABEL[sat.cat]} · #${sat.id}`;
+  const sub = up ? `${n.lit ? magText(n.mag) : "in shadow"} · ${fmtKm(n.range)}` : `${CAT_LABEL[sat.cat]} · #${sat.id}`;
   return `<button class="${cls}" data-id="${sat.id}"><span class="dot"></span><span class="nm">${esc(sat.name)}<span class="sub">${sub}</span></span><span class="num">${right}</span></button>`;
 }
 
@@ -935,9 +986,10 @@ function renderSheet() {
     } else if (!up.length) {
       box.innerHTML = `<div class="empty">${S.sats.length ? (S.loc ? "Nothing is above the horizon right now. Check which satellite types are switched on in Settings." : "Set your location in Settings to see what's overhead.") : "Loading satellite data…"}</div>`;
     } else {
-      const list = up.slice().sort((a, b) => (b.lit - a.lit) || ((b.sat.cat === "bright") - (a.sat.cat === "bright")) || (b.el - a.el));
+      const list = up.slice().sort((a, b) => (b.lit - a.lit) || (a.lit ? a.mag - b.mag : b.el - a.el));
       const shown = list.slice(0, 100);
-      box.innerHTML = `<div class="legend"><span class="l">Sunlit (visible in a dark sky)</span><span>In Earth's shadow</span></div>` +
+      box.innerHTML = `<div class="legend"><span class="l">Sunlit, brightest first</span><span>In Earth's shadow</span></div>` +
+        `<div class="note">Lower magnitude means brighter. Magnitude 6 is about the faintest you can see by eye in a dark sky.</div>` +
         shown.map(e => satRow(e.sat)).join("") +
         (list.length > shown.length ? `<div class="note">Showing 100 of ${list.length.toLocaleString("en")} satellites above the horizon. Search above to find a specific one.</div>` : "");
     }
@@ -951,7 +1003,7 @@ function renderSheet() {
         (list.length ? list.map(p => `
         <button class="row ${p.visible ? "lit" : ""} ${p.sat.id === S.targetId ? "sel" : ""}" data-id="${p.sat.id}">
           <span class="dot"></span>
-          <span class="nm">${esc(p.sat.name)}<span class="sub">${compassName(p.startAz)} → ${compassName(p.endAz)} · peak ${p.maxEl.toFixed(0)}°</span></span>
+          <span class="nm">${esc(p.sat.name)}<span class="sub">${compassName(p.startAz)} → ${compassName(p.endAz)} · peak ${p.maxEl.toFixed(0)}°${p.visible ? ` · ${magText(p.mag)}` : ""}</span></span>
           <span class="num">${fmtTime(p.start)}<span class="sub">${dayWord(p.start)} · ${Math.max(1, Math.round((p.end - p.start) / 60000))} min</span></span>
         </button>`).join("") : `<div class="empty">No passes above 15° in the next 12 hours.</div>`);
     }
@@ -992,7 +1044,9 @@ function renderNow(sat) {
   const up = l.el != null && l.el > 0;
   $("detNow").innerHTML = rows([
     ["Where to look", l.el == null ? "Set your location first" : up ? `${compassName(l.az)} (${l.az.toFixed(0)}°), ${l.el.toFixed(0)}° above the horizon` : "Below your horizon"],
-    ["Can you see it?", up ? visText(l.lit).replace(/^./, c => c.toUpperCase()) : (l.lit ? "Sunlit, but below your horizon" : "No, it's in Earth's shadow")],
+    ["Can you see it?", up ? visText(l.lit, l.mag).replace(/^./, c => c.toUpperCase()) : (l.lit ? "Sunlit, but below your horizon" : "No, it's in Earth's shadow")],
+    ["Brightness", up && l.lit && l.mag != null ? `Magnitude ${l.mag.toFixed(1)}<span class="sub">${brightWord(l.mag)}. Estimated; lower is brighter.</span>` : null],
+    ["Typical brightness", `Magnitude ${sat.m0.toFixed(1)}<span class="sub">At 1,000 km away and half lit, the standard for comparing satellites</span>`],
     ["Distance from you", l.range != null ? fmtKm(l.range) : null],
     ["Height above Earth", fmtKm(l.alt)],
     ["Speed", `${l.speed.toFixed(2)} km/s <span class="sub">${Math.round(l.speed * 3600).toLocaleString("en")} km/h</span>`],
@@ -1046,7 +1100,7 @@ function renderDetailPasses(sat) {
     <div class="passrow ${p.visible ? "lit" : ""}">
       <span class="dot"></span>
       <span>${fmtDayTime(p.start)}<span class="sub">${compassName(p.startAz)} → ${compassName(p.endAz)} · peak ${p.maxEl.toFixed(0)}° at ${fmtTime(p.maxTime)}</span></span>
-      <span class="num">${Math.max(1, Math.round((p.end - p.start) / 60000))} min<span class="sub">${p.visible ? "visible" : "not visible"}</span></span>
+      <span class="num">${Math.max(1, Math.round((p.end - p.start) / 60000))} min<span class="sub">${p.visible ? `visible, ${magText(p.mag)}` : p.mag < 50 ? `too faint, ${magText(p.mag)}` : "not visible"}</span></span>
     </div>`).join("") : `<p class="small">No passes above 10° in the next 48 hours.</p>`;
 }
 
@@ -1093,6 +1147,7 @@ function openSettings() {
   $("latIn").value = S.loc?.lat ?? ""; $("lonIn").value = S.loc?.lon ?? "";
   $("corrIn").value = S.corr; $("corrVal").textContent = (S.corr > 0 ? "+" : "") + S.corr + "°";
   $("showBright").checked = S.show.bright; $("showStarlink").checked = S.show.starlink; $("showOther").checked = S.show.other;
+  $("eyeOnly").checked = S.eyeOnly;
   $("locErr").hidden = true;
   updateLocNow(); updateTleInfo(); $("settings").hidden = false;
 }
@@ -1107,6 +1162,7 @@ $("setDone").addEventListener("click", () => {
   $("settings").hidden = true;
 });
 $("corrIn").addEventListener("input", e => { S.corr = +e.target.value; $("corrVal").textContent = (S.corr > 0 ? "+" : "") + S.corr + "°"; store.set("corr", S.corr); });
+$("eyeOnly").addEventListener("change", e => { S.eyeOnly = e.target.checked; store.set("eyeOnly", S.eyeOnly); renderSheet(); updateStatus(); });
 for (const [id, cat] of [["showBright", "bright"], ["showStarlink", "starlink"], ["showOther", "other"]]) {
   $(id).addEventListener("change", e => { S.show[cat] = e.target.checked; store.set("show", S.show); computePaths(); renderSheet(); updateStatus(); });
 }

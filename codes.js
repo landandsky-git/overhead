@@ -8,6 +8,27 @@ window.SAT_CODES = {
 
   TYPES: { PAY: "Payload (working spacecraft)", "R/B": "Rocket stage", DEB: "Debris", UNK: "Unknown" },
 
+  // Typical ("standard") brightness: the magnitude a satellite would have 1,000 km away and half lit.
+  // Lower is brighter. Rough values by type; real satellites vary by about ±1. First match wins.
+  STD_MAG: [
+    [/^ISS/, -1.8],
+    [/^(CSS|TIANHE|TIANGONG)/, -0.5],
+    [/^(HST|HUBBLE)/, 2.2],
+    [/^STARLINK/, 5.8],
+    [/^KUIPER/, 5.5],
+    [/^ONEWEB/, 7.0],
+    [/^SL-16 R\/B/, 2.0],
+    [/^(SL-14|SL-3) R\/B/, 3.5],
+    [/^(H-2A|H-IIA|ARIANE|FALCON 9)/, 3.5],
+    [/R\/B/, 4.0],
+    [/ DEB/, 7.0],
+    [/^(FLOCK|DOVE|SUPERDOVE|LEMUR|SPACEBEE|TIANQI)/, 8.0],
+    [/^ORBCOMM/, 6.5],
+    [/^(YAOGAN|NOAA|METOP|FENGYUN|FY-)/, 4.5],
+    [/^(COSMOS|IRIDIUM|GLOBALSTAR)/, 5.0],
+    [/^(NAVSTAR|GPS |GSAT0|GALILEO|BEIDOU)|GLONASS/, 4.0],
+  ],
+
   // [pattern, operator, what it does]. First match wins.
   OPERATORS: [
     [/^STARLINK/, "SpaceX", "Starlink satellite internet"],
