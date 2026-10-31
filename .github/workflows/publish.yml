@@ -36,23 +36,45 @@ jobs:
       - name: Collect the app files
         run: |
           mkdir -p site/data
-          cp index.html worker.js codes.js manifest.webmanifest icon.svg icon-180.png icon-512.png tle-fallback.txt site/
+          cp index.html worker.js codes.js sw.js manifest.webmanifest icon.svg icon-180.png icon-512.png tle-fallback.txt site/
+          cp -r lib site/
 
+      # CSV rather than the classic two-line text, which leaves out satellites numbered above 99999.
       - name: Download satellite lists (keep the last good copy if CelesTrak says no)
         run: |
           for g in active visual stations; do
-            f="site/data/$g.txt"
+            f="site/data/$g.csv"
             curl -sSL --retry 2 -A "Overhead satellite app (${{ github.repository }})" \
-              "https://celestrak.org/NORAD/elements/gp.php?GROUP=$g&FORMAT=tle" -o "$f" || true
-            if grep -q '^1 [0-9 ]\{5\}' "$f" 2>/dev/null; then
+              "https://celestrak.org/NORAD/elements/gp.php?GROUP=$g&FORMAT=csv" -o "$f" || true
+            if head -c 200 "$f" 2>/dev/null | grep -q '^OBJECT_NAME,.*MEAN_MOTION'; then
               echo "$g: fresh from CelesTrak ($(wc -l < "$f") lines)"
             else
               echo "$g: CelesTrak gave no data, reusing the published copy"
-              curl -sSL "${{ steps.pages.outputs.base_url }}/data/$g.txt" -o "$f" || true
-              grep -q '^1 [0-9 ]\{5\}' "$f" 2>/dev/null || rm -f "$f"
+              curl -sSL "${{ steps.pages.outputs.base_url }}/data/$g.csv" -o "$f" || true
+              head -c 200 "$f" 2>/dev/null | grep -q '^OBJECT_NAME,.*MEAN_MOTION' || rm -f "$f"
             fi
           done
           date -u +"%Y-%m-%dT%H:%M:%SZ" > site/data/updated.txt
+
+      # Typical brightness of each satellite, from Mike McCants' catalog and radar sizes.
+      # Rebuilt once a day (and on every push); otherwise the published copy is reused.
+      - name: Build brightness table
+        shell: pwsh
+        run: |
+          $rebuild = "${{ github.event_name }}" -ne "schedule" -or (Get-Date).ToUniversalTime().Hour -lt 4
+          if ($rebuild) {
+            try {
+              Invoke-WebRequest "https://www.mmccants.org/programs/qsmag.zip" -OutFile qsmag.zip
+              Expand-Archive qsmag.zip -DestinationPath qsmag -Force
+              Invoke-WebRequest "https://celestrak.org/pub/satcat.csv" -OutFile satcat.csv
+              ./tools/build-mags.ps1 -QuicksatMag qsmag/quicksat.mag -Satcat satcat.csv `
+                -OrbitFiles site/data/active.csv, site/data/visual.csv, site/data/stations.csv -Out site/data/mags.json
+            } catch { Write-Host "Couldn't rebuild the brightness table: $_"; $rebuild = $false }
+          }
+          if (-not $rebuild) {
+            try { Invoke-WebRequest "${{ steps.pages.outputs.base_url }}/data/mags.json" -OutFile site/data/mags.json }
+            catch { Write-Host "No published brightness table yet; the app will use its built-in estimates" }
+          }
 
       - uses: actions/upload-pages-artifact@v3
         with:

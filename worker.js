@@ -1,7 +1,9 @@
 // Background thread: propagates every satellite so the sky view stays smooth on a phone.
 // Messages in:  reset | add {list:[[l1,l2,stdMag],...]} | obs {lat,lon,h} | tick {t, gen} | passes {t, hours, indices, job}
 // Messages out: pos {t, gen, data: Float64Array [idx, az, el, rangeKm, lit, mag, az+1s, el+1s] ...} | passes {job, list}
-importScripts("https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js");
+// The page normally starts this worker with the orbit library already bundled in front of it,
+// which also works offline; loaded on its own, it fetches the library itself.
+if (typeof satellite === "undefined") importScripts("lib/satellite.min.js");
 
 const D2R = Math.PI / 180, R2D = 180 / Math.PI, EARTH_R = 6371;
 let recs = [], mags = [];

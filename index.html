@@ -28,6 +28,8 @@
   --target: #7af0c8;
   --star: #9fb3d9;
   --horizon: #2f4a3a;
+  --planet: #f0b38a;   /* planets: warmer and pinker than sunlit satellites */
+  --moon: #e9e4d4;
   --bad: #ff8a7a;
   --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
   --font-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
@@ -43,6 +45,11 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 button:focus-visible, input:focus-visible, .card:focus-visible { outline: 2px solid var(--target); outline-offset: 2px; }
 
 #sky { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#cam { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.alignbar { position: fixed; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--panel) 92%, transparent); border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; padding: 12px 16px calc(env(safe-area-inset-bottom, 0px) + 12px); display: grid; gap: 8px; touch-action: pan-y; }
+.align-help { margin: 0; font-size: 13px; color: var(--ink); text-wrap: pretty; }
+.align-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 4px; }
+.align-actions .secondary { padding: 10px; }
 
 .top { position: fixed; top: 0; left: 0; right: 0; padding: calc(env(safe-area-inset-top, 0px) + 8px) 16px 8px; display: flex; gap: 8px; align-items: center; justify-content: space-between; pointer-events: none; }
 .top > * { pointer-events: auto; }
@@ -131,16 +138,31 @@ dd .sub { display: block; font-size: 12px; color: var(--dim); }
 .passrow.lit .dot { background: var(--lit); box-shadow: 0 0 6px var(--lit); }
 .passrow .sub { display: block; font: 11px var(--font-data); color: var(--dim); }
 .passrow .num { font: 12px var(--font-data); text-align: right; }
+.tonight { display: grid; gap: 6px; padding: 2px 0 10px; }
+.tn-line { display: grid; grid-template-columns: 4.5em minmax(0, 1fr); gap: 10px; font-size: 13px; align-items: baseline; }
+.tn-k { font: 11px var(--font-data); text-transform: uppercase; letter-spacing: .08em; color: var(--dim); }
+.clouds { display: grid; gap: 2px; min-width: 0; }
+.cc { display: grid; gap: 3px; min-width: 0; }
+.cc b { display: block; height: 14px; border-radius: 3px; background: var(--panel-2); overflow: hidden; }
+.cc span { display: block; height: 100%; background: var(--dim); }
+.cc i { font: 9px var(--font-data); color: var(--dim); font-style: normal; white-space: nowrap; height: 11px; overflow: visible; }
+.tn-h { margin: 6px 0 2px; font: 600 12px var(--font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+.pass { border-top: 1px solid var(--line); }
+.pass .row { border-top: 0; padding-bottom: 4px; }
+.row .sub.tn-wrap { white-space: normal; }
+.cal { font: 11px var(--font-data); color: var(--target); text-transform: uppercase; letter-spacing: .06em; padding: 2px 0 10px 20px; }
 .linkbtn { color: var(--target); font: 12px var(--font-data); text-transform: uppercase; letter-spacing: .08em; padding: 8px 0; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 </style>
 </head>
 <body>
+<video id="cam" playsinline muted hidden></video>
 <canvas id="sky" aria-label="Sky view showing satellites in the direction the phone points"></canvas>
 
 <div class="top">
   <div class="brand">Overhead</div>
   <div class="status" id="status">Loading…</div>
+  <button class="iconbtn" id="alignBtn" title="Align with a star or planet" aria-label="Align with a star or planet">◎</button>
   <button class="iconbtn" id="redBtn" aria-pressed="false" title="Red night mode">R</button>
   <button class="iconbtn" id="setBtn" title="Settings">⚙</button>
 </div>
@@ -161,12 +183,22 @@ dd .sub { display: block; font-size: 12px; color: var(--dim); }
     <button class="grab" id="grab"><span id="sheetTitle">Up now</span></button>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="tabNow" aria-selected="true">Now</button>
+      <button class="tab" role="tab" id="tabTonight" aria-selected="false">Tonight</button>
       <button class="tab" role="tab" id="tabPasses" aria-selected="false">Passes</button>
     </div>
   </div>
   <div class="sheet-body" id="sheetBody">
     <div class="tools" id="nowTools"><input type="search" id="findIn" placeholder="Find a satellite by name or number" autocomplete="off" enterkeyhint="search" aria-label="Find a satellite"></div>
     <div id="listBox"></div>
+  </div>
+</section>
+
+<section class="alignbar" id="alignBar" hidden>
+  <p class="align-help" id="alignHelp"></p>
+  <div id="alignList"></div>
+  <div class="align-actions">
+    <button class="secondary" id="alignCancel">Cancel</button>
+    <button class="secondary" id="alignReset">Undo alignment</button>
   </div>
 </section>
 
@@ -210,13 +242,13 @@ dd .sub { display: block; font-size: 12px; color: var(--dim); }
       <label class="check"><input type="checkbox" id="showStarlink"><span>Starlink</span><span class="count" id="cntStarlink"></span></label>
       <label class="check"><input type="checkbox" id="showOther"><span>All other active satellites</span><span class="count" id="cntOther"></span></label>
       <label class="check"><input type="checkbox" id="eyeOnly"><span>Only show satellites bright enough to see without binoculars</span><span class="count"></span></label>
-      <p class="small">Sunlit satellites are drawn bigger and brighter the brighter they should look, on the same scale as the stars. Brightness is estimated from each satellite's type, distance and angle to the sun, so it can be off by about one magnitude.</p>
+      <p class="small">Sunlit satellites are drawn bigger and brighter the brighter they should look, on the same scale as the stars. Each satellite's typical brightness comes from measurements where they exist (Mike McCants' catalog, published Starlink studies), otherwise from its radar size or type. The app then adjusts for distance and angle to the sun. Expect it to be within about one magnitude.</p>
     </section>
 
     <section class="group">
       <h3>Compass correction: <span id="corrVal">0°</span></h3>
-      <input type="range" id="corrIn" min="-30" max="30" step="1" value="0" aria-label="Compass correction in degrees">
-      <p class="small">Phone compasses point to magnetic north. If the stars on screen sit consistently to one side of the real ones, nudge this until they line up.</p>
+      <input type="range" id="corrIn" min="-90" max="90" step="0.5" value="0" aria-label="Compass correction in degrees">
+      <p class="small">Phone compasses point to magnetic north and are often a few degrees off. The easiest fix is the ◎ button: line up a bright star, planet or the Moon and the app sets this for you. You can also nudge it by hand.</p>
     </section>
 
     <section class="group">
@@ -240,7 +272,7 @@ dd .sub { display: block; font-size: 12px; color: var(--dim); }
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+<script src="lib/satellite.min.js"></script>
 <script src="codes.js"></script>
 <script>
 "use strict";
@@ -268,10 +300,15 @@ const S = {
   tleTime: 0, times: [], loading: "Loading satellites…", detailsId: null,
 };
 const CAT_LABEL = { bright: "Bright / easy to see", starlink: "Starlink", other: "Active satellite" };
+// Lining the sky up on a real star or planet: on = panel open, camera = live camera picture behind
+// the sky, edge = no camera, so the top edge of the phone is used as the pointer.
+const ALIGN = { on: false, camera: false, edge: false, stream: null, timer: 0, key: "" };
 
 // ---------- satellite data ----------
 const TLE_MAX_AGE = 6 * 3600e3;
-const groupUrl = g => `https://celestrak.org/NORAD/elements/gp.php?GROUP=${g}&FORMAT=tle`;
+// CSV ("OMM") rather than the classic two-line text: the text format only has room for 5-digit
+// catalog numbers, so CelesTrak leaves out everything numbered above 99999 (launched since mid-2026).
+const groupUrl = g => `https://celestrak.org/NORAD/elements/gp.php?GROUP=${g}&FORMAT=csv`;
 
 function parseTLE(text) {
   const lines = text.split(/\r?\n/).map(l => l.trimEnd()).filter(Boolean);
@@ -284,6 +321,53 @@ function parseTLE(text) {
   return out;
 }
 
+// Catalog numbers above 99999 are written as a letter plus four digits ("Alpha-5"), skipping I and O.
+const ALPHA5 = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+const toAlpha5 = n => n < 100000 ? String(n).padStart(5, "0") : ALPHA5[Math.floor(n / 10000) - 10] + String(n % 10000).padStart(4, "0");
+const fromAlpha5 = s => /^[A-Z]/.test(s) ? (ALPHA5.indexOf(s[0]) + 10) * 10000 + +s.slice(1) : +s;
+function tleChecksum(line) { let s = 0; for (const ch of line) s += ch >= "0" && ch <= "9" ? +ch : ch === "-" ? 1 : 0; return s % 10; }
+// Two-line "assumed decimal point" notation: 0.000136016 -> " 13602-3"
+function tleExp(v) {
+  if (!v) return " 00000+0";
+  let e = Math.floor(Math.log10(Math.abs(v))) + 1, m = Math.round(Math.abs(v) / 10 ** e * 1e5);
+  if (m >= 1e5) { m = 1e4; e++; }
+  if (e < -9 || e > 9) return " 00000+0";
+  return (v < 0 ? "-" : " ") + String(m).padStart(5, "0") + (e < 0 ? "-" : "+") + Math.abs(e);
+}
+// One CelesTrak CSV row as the two lines the orbit library reads (column layout of the classic format).
+function ommToTLE(o) {
+  const num = toAlpha5(+o.NORAD_CAT_ID), f = (v, w, d) => (+v).toFixed(d).padStart(w);
+  const id = /^\d{2}(\d{2})-(\d{3})(\w*)$/.exec(o.OBJECT_ID || "");
+  const t = new Date(o.EPOCH + "Z"), y = t.getUTCFullYear(), day = (t - Date.UTC(y, 0, 1)) / 86400e3 + 1;
+  const ndot = +o.MEAN_MOTION_DOT || 0;
+  const l1 = `1 ${num}${o.CLASSIFICATION_TYPE || "U"} ${(id ? id[1] + id[2] + id[3] : "").padEnd(8).slice(0, 8)} ` +
+    `${String(y % 100).padStart(2, "0")}${day.toFixed(8).padStart(12, "0")} ${ndot < 0 ? "-" : " "}${Math.min(Math.abs(ndot), 0.99999999).toFixed(8).slice(1)} ` +
+    ` 00000+0 ${tleExp(+o.BSTAR || 0)} 0 ${String((+o.ELEMENT_SET_NO || 0) % 10000).padStart(4)}`;
+  const l2 = `2 ${num} ${f(o.INCLINATION, 8, 4)} ${f(o.RA_OF_ASC_NODE, 8, 4)} ${String(Math.round(+o.ECCENTRICITY * 1e7)).padStart(7, "0")} ` +
+    `${f(o.ARG_OF_PERICENTER, 8, 4)} ${f(o.MEAN_ANOMALY, 8, 4)} ${f(o.MEAN_MOTION, 11, 8)}${String((+o.REV_AT_EPOCH || 0) % 100000).padStart(5)}`;
+  return { name: o.OBJECT_NAME, l1: l1 + tleChecksum(l1), l2: l2 + tleChecksum(l2) };
+}
+// One CSV line into cells; commas inside quoted names are kept.
+function csvCells(line) {
+  const out = []; let cur = "", quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (quoted) { if (ch !== '"') cur += ch; else if (line[i + 1] === '"') { cur += '"'; i++; } else quoted = false; }
+    else if (ch === '"') quoted = true;
+    else if (ch === ",") { out.push(cur); cur = ""; }
+    else cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+function parseCSV(text) {
+  const [head, ...rows] = text.split(/\r?\n/).filter(Boolean).map(csvCells);
+  return rows.map(r => Object.fromEntries(head.map((h, i) => [h, r[i]])));
+}
+const isOMM = text => /^OBJECT_NAME,.*MEAN_MOTION/.test(text);
+// Orbits from either format: CelesTrak CSV (current) or classic two-line text (the bundled fallback file).
+const parseOrbits = text => isOMM(text) ? parseCSV(text).filter(o => o.NORAD_CAT_ID && o.MEAN_MOTION).map(ommToTLE) : parseTLE(text);
+
 async function openCache() { try { return await caches.open("overhead-tle-v1"); } catch { return null; } }
 
 // Where the lists come from, in order:
@@ -292,34 +376,40 @@ async function openCache() { try { return await caches.open("overhead-tle-v1"); 
 //      and answers later requests with a short note;
 //   3. the last good copy saved on this phone.
 let lastRefusal = null;
-const isTLE = text => /^1 [\d ]{5}/m.test(text);
+// fetch that gives up if the server hasn't started answering within ms (weak signal outdoors);
+// once it answers, the download itself may take as long as it needs.
+async function fetchT(url, ms = 10000, opts = {}) {
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), ms);
+  try { return await fetch(url, { ...opts, signal: ctl.signal }); } finally { clearTimeout(timer); }
+}
 async function getGroup(g, force) {
   const url = groupUrl(g), key = "tleTime_" + g, failKey = "tleFail_" + g, time = store.get(key, 0);
   const cache = await openCache();
-  const cached = async () => {
+  // stale = a fresh download was tried and failed, so this is the copy saved earlier
+  const cached = async stale => {
     if (!cache) return null;
-    try { const r = await cache.match(url); return r ? { text: await r.text(), time } : null; } catch { return null; }
+    try { const r = await cache.match(url); return r ? { text: await r.text(), time, stale } : null; } catch { return null; }
   };
   const save = async text => {
     if (cache) { try { await cache.put(url, new Response(text)); } catch {} }
     store.set(key, Date.now());
     return { text, time: Date.now() };
   };
-  if (!force && Date.now() - time < TLE_MAX_AGE) { const c = await cached(); if (c) return c; }
+  if (!force && Date.now() - time < TLE_MAX_AGE) { const c = await cached(false); if (c) return c; }
   try {
-    const r = await fetch(`data/${g}.txt`, { cache: "no-cache" });
-    if (r.ok) { const text = await r.text(); if (isTLE(text)) return await save(text); }
+    const r = await fetchT(`data/${g}.csv`, 10000, { cache: "no-cache" });
+    if (r.ok) { const text = await r.text(); if (isOMM(text)) return await save(text); }
   } catch {}
-  if (!force && Date.now() - store.get(failKey, 0) < 2 * 3600e3) { lastRefusal = "wait"; return await cached(); }
+  if (!force && Date.now() - store.get(failKey, 0) < 2 * 3600e3) { lastRefusal = "wait"; return await cached(true); }
   try {
-    const r = await fetch(url);
+    const r = await fetchT(url, 15000);
     const text = await r.text();
-    if (!isTLE(text)) { lastRefusal = /not updated/i.test(text) ? "wait" : "error"; throw new Error("no data"); }
+    if (!isOMM(text)) { lastRefusal = /not updated/i.test(text) ? "wait" : "error"; throw new Error("no data"); }
     return await save(text);
   } catch {
     if (!lastRefusal) lastRefusal = "offline";
     store.set(failKey, Date.now());
-    return await cached();
+    return await cached(true);
   }
 }
 
@@ -331,14 +421,16 @@ async function loadSats(force) {
   S.sats = []; S.byId = new Map(); S.counts = { bright: 0, starlink: 0, other: 0 };
   S.now = []; S.nowMap = new Map(); S.passes = null; S.passesAt = 0; paths.clear();
   S.loading = "Loading satellites…"; updateStatus();
+  S.mags = await getMags(force);
+  if (job !== loadJob) return;
   const times = [];
   let bright = [];
   for (const g of ["stations", "visual"]) {
     const r = await getGroup(g, force);
     if (job !== loadJob) return;
-    if (r) { bright.push(...parseTLE(r.text)); times.push(r.time); }
+    if (r) { bright.push(...parseOrbits(r.text)); times.push(r.time); }
   }
-  if (!bright.length) { try { bright = parseTLE(await (await fetch("tle-fallback.txt")).text()); } catch {} }
+  if (!bright.length) { try { bright = parseOrbits(await (await fetch("tle-fallback.txt")).text()); } catch {} }
   addSats(bright, "bright");
   S.times = times;
   await loadActive(force);
@@ -351,11 +443,15 @@ async function loadActive(force) {
   lastRefusal = null;
   const act = await getGroup("active", force);
   if (job !== loadJob) return;
-  if (act) { addSats(parseTLE(act.text), null); S.times.push(act.time); }
+  if (act) { addSats(parseOrbits(act.text), null); S.times.push(act.time); S.passesAt = 0; }   // redo passes to include bright ones from this list
   S.tleTime = S.times.length ? Math.min(...S.times) : 0;
-  S.loading = act ? "" : lastRefusal === "wait"
-    ? "Starlink and other satellites will load within 2 hours (CelesTrak download limit)"
-    : "Showing bright satellites only (couldn't download the full list)";
+  const ageDays = act ? (Date.now() - act.time) / 86400e3 : 0;
+  S.loading = !act ? (lastRefusal === "wait"
+      ? "Starlink and other satellites will load within 2 hours (CelesTrak download limit)"
+      : "Showing bright satellites only (couldn't download the full list)")
+    : act.stale && ageDays > 10 ? `No connection. The saved satellite data is ${Math.round(ageDays)} days old, so positions may be off by several degrees. Connect to update.`
+    : act.stale && Date.now() - act.time > TLE_MAX_AGE ? `No connection. Using satellite data saved ${fmtDate(new Date(act.time))}, ${fmtTime(act.time)}. It stays accurate for about a week.`
+    : "";
   updateStatus(); updateTleInfo(); renderSheet(); updateCard();
 }
 
@@ -365,9 +461,11 @@ function addSats(list, cat) {
     const id = t.l1.slice(2, 7).trim();
     if (S.byId.has(id)) continue;
     const raw = t.name.replace(/^0 /, "").trim();
+    // CelesTrak lists the modules docked to the space stations separately; they fly as one object.
+    if (/^(ISS|CSS) \((?!ZARYA|TIANHE)/.test(raw)) continue;
     const c = cat || (/^STARLINK/i.test(raw) ? "starlink" : "other");
     const sat = { idx: S.sats.length, id, raw, name: prettyName(raw), nameU: raw.toUpperCase(), l1: t.l1, l2: t.l2, cat: c };
-    sat.m0 = stdMag(sat);
+    [sat.m0, sat.m0src] = stdMag(sat);
     S.sats.push(sat); S.byId.set(id, sat); S.counts[c]++;
     out.push([t.l1, t.l2, sat.m0]);
   }
@@ -375,9 +473,54 @@ function addSats(list, cat) {
   updateTleInfo();
 }
 
+// Typical brightness (magnitude 1,000 km away, half lit) and where the value comes from:
+// measured catalog value, then published values for well-studied families, then radar size,
+// then rough values by type.
 function stdMag(sat) {
-  for (const [re, m] of CODES.STD_MAG || []) if (re.test(sat.nameU)) return m;
-  return sat.cat === "bright" ? 3.5 : 5.5;
+  const M = S.mags || {};
+  if (M.m && M.m[sat.id] != null) return [M.m[sat.id], "measured"];
+  const sl = starlinkMag(sat);
+  if (sl != null) return [sl, "family"];
+  for (const [re, m, sure] of CODES.STD_MAG || []) if (sure && re.test(sat.nameU)) return [m, "family"];
+  if (M.r && M.r[sat.id] != null) return [M.r[sat.id], "radar"];
+  for (const [re, m, sure] of CODES.STD_MAG || []) if (!sure && re.test(sat.nameU)) return [m, "type"];
+  return [sat.cat === "bright" ? 4.0 : 5.5, "type"];
+}
+// Starlink by generation (from the satellite number), from published measurements (Mallama et al.).
+// Newly launched ones still climbing to their working orbit (below about 400 km) fly in a much brighter
+// attitude: that's what makes fresh "trains" so visible. "Newly launched" comes from the launch dates
+// in data/mags.json, or without it from the satellite number (the newest generation).
+function starlinkMag(sat) {
+  const m = /^STARLINK-(\d+)/.exec(sat.nameU);
+  if (!m) return null;
+  const num = +m[1], revPerDay = parseFloat(sat.l2.slice(52, 63)), n = revPerDay * 2 * Math.PI / 86400;
+  const low = n > 0 && Math.cbrt(398600.4418 / (n * n)) - 6378.137 < 400;
+  const isNew = S.mags && S.mags.new ? !!S.mags.new[sat.id] : num >= 30000;
+  if (low && isNew) return 5.0;
+  return num < 1500 ? 5.1 : num < 2000 ? 6.8 : num < 5000 ? 6.0 : 7.5;
+}
+const MAG_SOURCE = {
+  measured: "Measured, from Mike McCants' satellite brightness catalog",
+  family: "From published measurements of this kind of satellite",
+  radar: "Estimated from its radar size",
+  type: "Rough estimate for this type of object",
+};
+
+// The brightness table published next to the app (data/mags.json, rebuilt daily by GitHub).
+async function getMags(force) {
+  const url = new URL("data/mags.json", location.href).href, cache = await openCache();
+  const cached = async () => { try { const r = cache && await cache.match(url); return r ? await r.json() : null; } catch { return null; } };
+  if (!force && Date.now() - store.get("magsTime", 0) < 24 * 3600e3) { const c = await cached(); if (c) return c; }
+  try {
+    const r = await fetchT(url, 10000, { cache: "no-cache" });
+    if (r.ok) {
+      const text = await r.text(), j = JSON.parse(text);
+      if (cache) { try { await cache.put(url, new Response(text)); } catch {} }
+      store.set("magsTime", Date.now());
+      return j;
+    }
+  } catch {}
+  return await cached();
 }
 
 function prettyName(n) {
@@ -386,14 +529,27 @@ function prettyName(n) {
 }
 
 // ---------- background worker ----------
-const worker = new Worker("worker.js");
+// Built from the orbit library plus worker.js, both fetched through the offline cache, so it also
+// starts without signal. Messages sent before it is ready wait in a queue.
+const worker = { real: null, queue: [], postMessage(m) { if (this.real) this.real.postMessage(m); else this.queue.push(m); } };
 let tickBusy = false, tickSent = 0;
-worker.onmessage = e => {
-  const m = e.data;
-  if (m.type === "pos") { tickBusy = false; if (m.gen === S.gen) applyPositions(m.data, m.t); }
-  else if (m.type === "passes" && m.job === S.passJob) applyPasses(m.list);
-};
-worker.onerror = () => { S.loading = "The satellite calculator didn't start. Reload the page."; updateStatus(); };
+async function startWorker() {
+  let w;
+  try {
+    const [lib, src] = await Promise.all(["lib/satellite.min.js", "worker.js"].map(u =>
+      fetch(u).then(r => { if (!r.ok) throw new Error(u); return r.text(); })));
+    w = new Worker(URL.createObjectURL(new Blob([lib, "\n;\n", src], { type: "text/javascript" })));
+  } catch { w = new Worker("worker.js"); }
+  w.onmessage = e => {
+    const m = e.data;
+    if (m.type === "pos") { tickBusy = false; if (m.gen === S.gen) applyPositions(m.data, m.t); }
+    else if (m.type === "passes" && m.job === S.passJob) applyPasses(m.list);
+  };
+  w.onerror = () => { S.loading = "The satellite calculator didn't start. Reload the page."; updateStatus(); };
+  worker.real = w;
+  for (const m of worker.queue.splice(0)) w.postMessage(m);
+}
+startWorker();
 
 function requestTick() {
   if (document.hidden) return;
@@ -420,15 +576,17 @@ function vNow(e, now) {
   return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
 }
 
+// Passes are worked out for the bright list plus anything else bright enough to be worth going out
+// for (typical brightness 5 or brighter, which includes freshly launched Starlink trains).
 function requestPasses() {
-  const indices = S.sats.filter(s => s.cat === "bright").map(s => s.idx);
+  const indices = S.sats.filter(s => s.cat === "bright" || s.m0 <= 5).map(s => s.idx);
   S.passesAt = Date.now();
-  worker.postMessage({ type: "passes", t: Date.now(), hours: 12, indices, job: ++S.passJob });
+  worker.postMessage({ type: "passes", t: Date.now(), hours: 14, indices, job: ++S.passJob });
 }
 function applyPasses(list) {
   S.passes = list.map(p => ({ ...p, sat: S.sats[p.idx] })).filter(p => p.sat)
     .sort((a, b) => (b.visible - a.visible) || (a.start - b.start));
-  if (S.tab === "passes") renderSheet();
+  if (S.tab === "passes" || S.tab === "tonight") renderSheet();
 }
 
 // ---------- astronomy ----------
@@ -440,7 +598,7 @@ function sunPos(date) {
   const lam = L + (1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * D2R;
   const eps = (23.439 - 0.0000004 * n) * D2R;
   const v = { x: Math.cos(lam), y: Math.cos(eps) * Math.sin(lam), z: Math.sin(eps) * Math.sin(lam) };
-  return { v, ra: Math.atan2(v.y, v.x), dec: Math.asin(v.z) };
+  return { v, lam, ra: Math.atan2(v.y, v.x), dec: Math.asin(v.z) };
 }
 function raDecToAltAz(ra, dec, gmst, lat, lon) {
   const ha = gmst + lon - ra;
@@ -490,13 +648,83 @@ const LINES = [["Dubhe","Merak"],["Merak","Phecda"],["Phecda","Megrez"],["Megrez
   ["Betelgeuse","Bellatrix"],["Bellatrix","Mintaka"],["Betelgeuse","Alnitak"],["Mintaka","Alnilam"],["Alnilam","Alnitak"],["Alnitak","Saiph"],["Mintaka","Rigel"],
   ["Caph","Schedar"],["Schedar","Navi"],["Navi","Ruchbah"],["Ruchbah","Segin"]];
 
-const sky = { stars: [], sunEl: -90 };
+// Ecliptic <-> equatorial coordinates (radians); J2000 obliquity unless given.
+const OBLIQUITY = 23.43928 * D2R;
+function eclToEq(lon, lat, eps = OBLIQUITY) {
+  const x = Math.cos(lat) * Math.cos(lon), y = Math.cos(lat) * Math.sin(lon), z = Math.sin(lat);
+  return { ra: Math.atan2(y * Math.cos(eps) - z * Math.sin(eps), x), dec: Math.asin(y * Math.sin(eps) + z * Math.cos(eps)) };
+}
+function eqToEcl(ra, dec, eps = OBLIQUITY) {
+  const x = Math.cos(dec) * Math.cos(ra), y = Math.cos(dec) * Math.sin(ra), z = Math.sin(dec);
+  return { lon: Math.atan2(y * Math.cos(eps) + z * Math.sin(eps), x), lat: Math.asin(-y * Math.sin(eps) + z * Math.cos(eps)) };
+}
+// Earth's axis slowly wobbles, shifting star coordinates by about 0.37 degrees since 2000.
+// Star and planet positions are for 2000 and get this shift so they line up with the real sky.
+const precession = date => (jd(date) - 2451545) / 365.25 * 50.29 / 3600 * D2R;
+function precess(ra, dec, date) { const e = eqToEcl(ra, dec); return eclToEq(e.lon + precession(date), e.lat); }
+
+// Planet orbits: [a (AU), e, inclination, mean longitude, longitude of perihelion, longitude of node]
+// at 2000 and their change per century (JPL "Approximate Positions of the Planets", valid 1800-2050).
+// Brightness: absolute magnitude plus a phase term (Mallama & Hilton 2018, simplified).
+const EARTH_ORBIT = [[1.00000261, 0.01671123, -0.00001531, 100.46457166, 102.93768193, 0], [0.00000562, -0.00004392, -0.01294668, 35999.37244981, 0.32327364, 0]];
+const PLANETS = [
+  ["Mercury", [[0.38709927, 0.20563593, 7.00497902, 252.25032350, 77.45779628, 48.33076593], [0.00000037, 0.00001906, -0.00594749, 149472.67411175, 0.16047689, -0.12534081]], -0.42, a => 0.0380 * a - 0.000273 * a * a + 0.000002 * a * a * a],
+  ["Venus", [[0.72333566, 0.00677672, 3.39467605, 181.97909950, 131.60246718, 76.67984255], [0.00000390, -0.00004107, -0.00078890, 58517.81538729, 0.00268329, -0.27769418]], -4.40, a => 0.0009 * a + 0.000239 * a * a - 0.00000065 * a * a * a],
+  ["Mars", [[1.52371034, 0.09339410, 1.84969142, -4.55343205, -23.94362959, 49.55953891], [0.00001847, 0.00007882, -0.00813131, 19140.30268499, 0.44441088, -0.29257343]], -1.52, a => 0.016 * a],
+  ["Jupiter", [[5.20288700, 0.04838624, 1.30439695, 34.39644051, 14.72847983, 100.47390909], [-0.00011607, -0.00013253, -0.00183714, 3034.74612775, 0.21252668, 0.20469106]], -9.40, a => 0.005 * a],
+  ["Saturn", [[9.53667594, 0.05386179, 2.48599187, 49.95424423, 92.59887831, 113.66242448], [-0.00125060, -0.00050991, 0.00193609, 1222.49362201, -0.41897216, -0.28867794]], -8.88, a => 0.044 * a],
+];
+// Heliocentric ecliptic position (AU) from orbital elements, T in centuries since 2000.
+function heliocentric([el, rate], T) {
+  const [a, e, inc, L, peri, node] = el.map((v, i) => v + rate[i] * T);
+  const M = (((L - peri) % 360 + 540) % 360 - 180) * D2R, w = (peri - node) * D2R, O = node * D2R, I = inc * D2R;
+  let E = M + e * Math.sin(M);
+  for (let k = 0; k < 6; k++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+  const xp = a * (Math.cos(E) - e), yp = a * Math.sqrt(1 - e * e) * Math.sin(E);
+  const cw = Math.cos(w), sw = Math.sin(w), cO = Math.cos(O), sO = Math.sin(O), cI = Math.cos(I), sI = Math.sin(I);
+  return [(cw * cO - sw * sO * cI) * xp + (-sw * cO - cw * sO * cI) * yp,
+          (cw * sO + sw * cO * cI) * xp + (-sw * sO + cw * cO * cI) * yp,
+          (sw * sI) * xp + (cw * sI) * yp];
+}
+function planetPositions(date) {
+  const T = (jd(date) - 2451545) / 36525, earth = heliocentric(EARTH_ORBIT, T), R = Math.hypot(...earth);
+  return PLANETS.map(([name, orbit, H, phase]) => {
+    const p = heliocentric(orbit, T), g = [p[0] - earth[0], p[1] - earth[1], p[2] - earth[2]];
+    const r = Math.hypot(...p), d = Math.hypot(...g);
+    const alpha = Math.acos(Math.max(-1, Math.min(1, (r * r + d * d - R * R) / (2 * r * d)))) * R2D;
+    const { ra, dec } = eclToEq(Math.atan2(g[1], g[0]) + precession(date), Math.asin(g[2] / d));
+    return { name, ra, dec, mag: H + 5 * Math.log10(r * d) + phase(alpha) };
+  });
+}
+// The Moon (Astronomical Almanac low-precision series, about 0.3 degrees): ecliptic position of date
+// and horizontal parallax, which shifts it by up to a degree as seen from Earth's surface.
+function moonPos(date) {
+  const T = (jd(date) - 2451545) / 36525, s = d => Math.sin(d * D2R), c = d => Math.cos(d * D2R);
+  const lon = 218.32 + 481267.881 * T + 6.29 * s(135.0 + 477198.87 * T) - 1.27 * s(259.3 - 413335.36 * T)
+    + 0.66 * s(235.7 + 890534.22 * T) + 0.21 * s(269.9 + 954397.74 * T) - 0.19 * s(357.5 + 35999.05 * T) - 0.11 * s(186.5 + 966404.03 * T);
+  const lat = 5.13 * s(93.3 + 483202.02 * T) + 0.28 * s(228.2 + 960400.89 * T) - 0.28 * s(318.3 + 6003.15 * T) - 0.17 * s(217.6 - 407332.21 * T);
+  const par = 0.9508 + 0.0518 * c(135.0 + 477198.87 * T) + 0.0095 * c(259.3 - 413335.36 * T) + 0.0078 * c(235.7 + 890534.22 * T) + 0.0028 * c(269.9 + 954397.74 * T);
+  const { ra, dec } = eclToEq(lon * D2R, lat * D2R, (23.439 - 0.013 * T) * D2R);
+  return { ra, dec, lon: lon * D2R, lat: lat * D2R, parallax: par };
+}
+
+const sky = { stars: [], planets: [], moon: null, sunEl: -90, sunV: [0, 0, -1] };
 function computeSky() {
   if (!S.loc) return;
   const date = new Date(), gmst = satellite.gstime(date), sun = sunPos(date);
   const lat = S.loc.lat * D2R, lon = S.loc.lon * D2R;
-  sky.sunEl = raDecToAltAz(sun.ra, sun.dec, gmst, lat, lon).el;
-  sky.stars = STARS.map(s => { const a = raDecToAltAz(s[1] * 15 * D2R, s[2] * D2R, gmst, lat, lon); return { name: s[0], mag: s[3], ...a, v: enu(a.az, a.el) }; });
+  const sa = raDecToAltAz(sun.ra, sun.dec, gmst, lat, lon);
+  sky.sunEl = sa.el; sky.sunV = enu(sa.az, sa.el);
+  sky.stars = STARS.map(s => {
+    const p = precess(s[1] * 15 * D2R, s[2] * D2R, date), a = raDecToAltAz(p.ra, p.dec, gmst, lat, lon);
+    return { name: s[0], kind: "star", mag: s[3], ...a, v: enu(a.az, a.el) };
+  });
+  sky.planets = planetPositions(date).map(p => { const a = raDecToAltAz(p.ra, p.dec, gmst, lat, lon); return { name: p.name, kind: "planet", mag: p.mag, ...a, v: enu(a.az, a.el) }; });
+  const m = moonPos(date), ma = raDecToAltAz(m.ra, m.dec, gmst, lat, lon);
+  ma.el -= m.parallax * Math.cos(ma.el * D2R);
+  // lit fraction from the Moon's angle to the Sun
+  const lit = (1 - Math.cos(m.lat) * Math.cos(m.lon - sun.lam)) / 2;
+  sky.moon = { name: "Moon", kind: "moon", mag: -12, lit, ...ma, v: enu(ma.az, ma.el) };
 }
 
 // ---------- one satellite at a time (main thread) ----------
@@ -614,7 +842,7 @@ async function catalog(sat) {
   if (catMem.has(sat.id)) return catMem.get(sat.id);
   const saved = store.get("cat_" + sat.id, null);
   if (saved) { catMem.set(sat.id, saved); return saved; }
-  const r = await fetch(`https://celestrak.org/satcat/records.php?CATNR=${encodeURIComponent(sat.id)}&FORMAT=JSON`);
+  const r = await fetchT(`https://celestrak.org/satcat/records.php?CATNR=${fromAlpha5(sat.id)}&FORMAT=JSON`, 10000);
   if (!r.ok) throw new Error("HTTP " + r.status);
   const j = await r.json(), c = Array.isArray(j) ? j[0] : null;
   if (!c) throw new Error("not in catalog");
@@ -781,7 +1009,7 @@ const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).
 const C = {};
 let FONT_D = "", FONT_M = "";
 function loadColors() {
-  for (const k of ["sky","ink","dim","lit","shadow","target","star","horizon","line"]) C[k] = css("--" + k);
+  for (const k of ["sky","ink","dim","lit","shadow","target","star","horizon","line","planet","moon"]) C[k] = css("--" + k);
   FONT_D = css("--font-display"); FONT_M = css("--font-data");
 }
 
@@ -810,6 +1038,18 @@ const magAlpha = m => Math.max(0.3, Math.min(1, 1.1 - 0.11 * m));
 const MAG_STEPS = [-2, -1, 0, 1, 2, 3, 4, 5, 6, 7];
 const magStep = m => Math.max(0, Math.min(MAG_STEPS.length - 1, Math.floor(m + 2.5)));
 
+// The Moon with its phase: lit fraction 0-1, litAngle = screen direction (radians) of the lit limb.
+function drawMoon(x, y, r, lit, litAngle) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(litAngle);
+  ctx.fillStyle = C.line; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill();
+  const rx = r * Math.abs(2 * lit - 1);
+  ctx.fillStyle = C.moon; ctx.beginPath();
+  ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2);   // the lit half facing the Sun
+  if (lit >= 0.5) ctx.ellipse(0, 0, rx, r, 0, Math.PI / 2, Math.PI * 1.5, false);   // gibbous: terminator bulges out
+  else ctx.ellipse(0, 0, rx, r, 0, Math.PI / 2, -Math.PI / 2, true);               // crescent: terminator cuts in
+  ctx.fill(); ctx.restore();
+}
+
 let prevLabels = new Set();
 let tapX = new Float32Array(32768), tapY = new Float32Array(32768), tapI = new Int32Array(32768), tapN = 0, frameNo = 0;
 const readoutEl = $("readout");
@@ -819,7 +1059,8 @@ function draw() {
   frameNo++;
   if (!W) resize();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  ctx.fillStyle = C.sky; ctx.fillRect(0, 0, W, H);
+  // While aligning with the camera on, the sky is drawn over the live camera picture.
+  if (ALIGN.camera) ctx.clearRect(0, 0, W, H); else { ctx.fillStyle = C.sky; ctx.fillRect(0, 0, W, H); }
   if (S.mode !== "sensor") S.R = rotFromView(S.view.az, S.view.el);
   const R = S.R; if (!R) return;
   const th = S.mode === "sensor" ? screenAngle() : 0;
@@ -858,6 +1099,28 @@ function draw() {
     ctx.beginPath(); ctx.arc(q.x, q.y, magRadius(s.mag), 0, 7); ctx.fill(); ctx.globalAlpha = 1;
     if (s.mag < 1.3) { ctx.fillStyle = C.dim; ctx.fillText(s.name, q.x + 5, q.y + 8); }
   }
+
+  // planets, always labelled: they are the brightest points in the sky and easy to mistake for satellites
+  ctx.font = `600 11px ${FONT_M}`;
+  for (const p of sky.planets) {
+    if (p.el < -1) continue;
+    const q = P(p.v); if (!q.front) continue;
+    ctx.fillStyle = C.planet; ctx.shadowColor = C.planet; ctx.shadowBlur = p.mag < 0 ? 8 : 3;
+    ctx.beginPath(); ctx.arc(q.x, q.y, Math.max(2, magRadius(p.mag)), 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillText(p.name, q.x + 7, q.y + 9);
+  }
+  if (sky.moon && sky.moon.el > -1) {
+    const q = P(sky.moon.v);
+    if (q.front) {
+      // direction of the Sun on screen, so the lit side faces the right way
+      const m = sky.moon.v, sv = sky.sunV, d = m[0] * sv[0] + m[1] * sv[1] + m[2] * sv[2];
+      const t = [sv[0] - d * m[0], sv[1] - d * m[1], sv[2] - d * m[2]], tn = Math.hypot(...t) || 1;
+      const q2 = P([m[0] + 0.02 * t[0] / tn, m[1] + 0.02 * t[1] / tn, m[2] + 0.02 * t[2] / tn]);
+      drawMoon(q.x, q.y, 9, sky.moon.lit, Math.atan2(q2.y - q.y, q2.x - q.x));
+      ctx.fillStyle = C.moon; ctx.fillText(`Moon ${Math.round(sky.moon.lit * 100)}%`, q.x + 13, q.y + 12);
+    }
+  }
+  ctx.font = `10px ${FONT_M}`;
 
   // satellite trails (selected satellite and bright sunlit ones)
   const tgtSat = S.targetId ? S.byId.get(S.targetId) : null;
@@ -945,11 +1208,13 @@ function draw() {
     }
   }
 
-  // crosshair
-  ctx.strokeStyle = C.dim; ctx.lineWidth = 1;
+  // crosshair (highlighted while aligning on a star, with a centre dot for precise aiming)
+  ctx.strokeStyle = ALIGN.on ? C.target : C.dim; ctx.lineWidth = ALIGN.on ? 1.5 : 1;
   ctx.beginPath(); ctx.arc(cx, cy, 16, 0, 7);
   ctx.moveTo(cx - 26, cy); ctx.lineTo(cx - 18, cy); ctx.moveTo(cx + 18, cy); ctx.lineTo(cx + 26, cy);
-  ctx.stroke();
+  if (ALIGN.on) { ctx.moveTo(cx, cy - 26); ctx.lineTo(cx, cy - 18); ctx.moveTo(cx, cy + 18); ctx.lineTo(cx, cy + 26); }
+  ctx.stroke(); ctx.lineWidth = 1;
+  if (ALIGN.on) { ctx.fillStyle = C.target; ctx.beginPath(); ctx.arc(cx, cy, 1.5, 0, 7); ctx.fill(); }
   const vaz = viewAz(R), vel = Math.asin(Math.max(-1, Math.min(1, -R[8]))) * R2D;
   const txt = `${compassName(vaz)} ${vaz.toFixed(0).padStart(3, "0")}° · ${vel >= 0 ? "+" : ""}${vel.toFixed(0)}°`;
   if (readoutEl.textContent !== txt) readoutEl.textContent = txt;
@@ -1020,7 +1285,7 @@ function aboutLine(sat) {
 function updateCard() {
   const card = $("card");
   const sat = S.targetId ? S.byId.get(S.targetId) : null;
-  if (!sat) { card.hidden = true; return; }
+  if (!sat || ALIGN.on) { card.hidden = true; return; }
   card.hidden = false;
   $("cardName").textContent = sat.name;
   const n = S.nowMap.get(sat.idx);
@@ -1060,16 +1325,19 @@ function satRow(sat, extraClass) {
 function renderSheet() {
   const box = $("listBox");
   $("tabNow").setAttribute("aria-selected", S.tab === "now");
+  $("tabTonight").setAttribute("aria-selected", S.tab === "tonight");
   $("tabPasses").setAttribute("aria-selected", S.tab === "passes");
   $("nowTools").hidden = S.tab !== "now";
   const body = $("sheetBody"), top = body.scrollTop;
-  if (S.tab === "now") {
+  if (S.tab === "tonight") {
+    renderTonight(box);
+  } else if (S.tab === "now") {
     const q = $("findIn").value.trim();
     const up = visibleNow();
     $("sheetTitle").textContent = `Up now · ${up.length.toLocaleString("en")}`;
     if (q) {
       const Q = q.toUpperCase(), hits = [];
-      for (const s of S.sats) { if (s.nameU.includes(Q) || s.id === q) { hits.push(s); if (hits.length >= 60) break; } }
+      for (const s of S.sats) { if (s.nameU.includes(Q) || s.id === q || String(fromAlpha5(s.id)) === q) { hits.push(s); if (hits.length >= 60) break; } }
       hits.sort((a, b) => ((S.nowMap.get(b.idx)?.el ?? -99) > 0) - ((S.nowMap.get(a.idx)?.el ?? -99) > 0));
       box.innerHTML = hits.length ? hits.map(s => satRow(s)).join("") + (hits.length >= 60 ? `<div class="note">Showing the first 60 matches. Type more of the name to narrow it down.</div>` : "")
         : `<div class="empty">No satellite matches "${esc(q)}".</div>`;
@@ -1084,12 +1352,12 @@ function renderSheet() {
         (list.length > shown.length ? `<div class="note">Showing 100 of ${list.length.toLocaleString("en")} satellites above the horizon. Search above to find a specific one.</div>` : "");
     }
   } else {
-    $("sheetTitle").textContent = "Next 12 hours";
+    $("sheetTitle").textContent = "Next 14 hours";
     if (!S.passes) { box.innerHTML = `<div class="empty">${S.loc ? "Working out passes…" : "Set your location in Settings first."}</div>`; }
     else {
       const list = S.passes.filter(p => p.end > Date.now()).slice(0, 60);
       box.innerHTML = `<div class="legend"><span class="l">Visible pass (sunlit, dark sky)</span><span>Not visible</span></div>` +
-        `<div class="note">Bright satellites and space stations passing above 15°. Tap any satellite, including Starlink, to see its own passes.</div>` +
+        `<div class="note">Bright satellites, space stations and new Starlink trains passing above 15°. Tap any satellite to see its own passes.</div>` +
         (list.length ? list.map(p => `
         <button class="row ${p.visible ? "lit" : ""} ${p.sat.id === S.targetId ? "sel" : ""}" data-id="${p.sat.id}">
           <span class="dot"></span>
@@ -1101,7 +1369,12 @@ function renderSheet() {
   body.scrollTop = top;
 }
 
-$("listBox").addEventListener("click", e => { const b = e.target.closest(".row"); if (b) openDetails(b.dataset.id); });
+$("listBox").addEventListener("click", e => {
+  const cal = e.target.closest(".cal");
+  if (cal) { const p = S.tonightList?.[+cal.dataset.i]; if (p) addToCalendar(p); return; }
+  const b = e.target.closest(".row"); if (b) openDetails(b.dataset.id);
+});
+$("tabTonight").addEventListener("click", () => { S.tab = "tonight"; $("sheet").classList.add("open"); renderSheet(); sheetH(); });
 $("findIn").addEventListener("input", () => { clearTimeout(renderSheet.t); renderSheet.t = setTimeout(renderSheet, 150); });
 $("grab").addEventListener("click", () => { $("sheet").classList.toggle("open"); sheetH(); });
 $("tabNow").addEventListener("click", () => { S.tab = "now"; $("sheet").classList.add("open"); renderSheet(); sheetH(); });
@@ -1111,6 +1384,158 @@ $("card").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key ===
 $("cardClose").addEventListener("click", e => { e.stopPropagation(); setTarget(null); });
 function sheetH() { document.documentElement.style.setProperty("--sheet-h", $("sheet").offsetHeight + "px"); }
 
+// --- tonight: when it's dark, the clouds, the Moon and the best passes ---
+// Dark enough for satellites = the Sun at least 6 degrees below the horizon. Scanned in 5-minute steps.
+function nightWindow() {
+  const lat = S.loc.lat * D2R, lon = S.loc.lon * D2R, step = 5 * 60e3, now = Date.now();
+  const sunEl = t => { const d = new Date(t), s = sunPos(d); return raDecToAltAz(s.ra, s.dec, satellite.gstime(d), lat, lon).el; };
+  let start = sunEl(now) < -6 ? now : null, end = null;
+  for (let i = 1, t = now + step; i <= 288 && end == null; i++, t += step) {   // up to 24 hours ahead
+    const dark = sunEl(t) < -6;
+    if (dark && start == null) start = t;
+    if (!dark && start != null) end = t;
+  }
+  return start == null ? null : { start, end: end ?? start + 24 * 3600e3, darkNow: start === now };
+}
+function moonTonight(win) {
+  const lat = S.loc.lat * D2R, lon = S.loc.lon * D2R, step = 10 * 60e3;
+  const moonUp = t => { const d = new Date(t), m = moonPos(d), a = raDecToAltAz(m.ra, m.dec, satellite.gstime(d), lat, lon); return a.el - m.parallax * Math.cos(a.el * D2R) > 0; };
+  let prev = moonUp(win.start), rise = null, set = null, up = 0, n = 0;
+  for (let t = win.start; t <= win.end; t += step) {
+    const u = moonUp(t); n++; if (u) up++;
+    if (u && !prev && rise == null) rise = t;
+    if (!u && prev && set == null) set = t;
+    prev = u;
+  }
+  return { share: up / n, rise, set };
+}
+
+// Hourly cloud cover from Open-Meteo, kept for an hour (and reused offline).
+let clouds = null, cloudsLoading = false;
+function cloudsKey() { return `${S.loc.lat.toFixed(2)},${S.loc.lon.toFixed(2)}`; }
+function cloudsFresh() { return clouds && clouds.key === cloudsKey() && Date.now() - clouds.at < 3600e3; }
+async function loadClouds() {
+  if (cloudsLoading || !S.loc) return;
+  const saved = store.get("clouds", null);
+  if (saved && saved.key === cloudsKey()) clouds = saved;
+  if (cloudsFresh()) return;
+  cloudsLoading = true;
+  try {
+    const r = await fetchT(`https://api.open-meteo.com/v1/forecast?latitude=${S.loc.lat}&longitude=${S.loc.lon}&hourly=cloud_cover&forecast_days=2&timeformat=unixtime`, 10000);
+    const j = await r.json();
+    clouds = { key: cloudsKey(), at: Date.now(), t: j.hourly.time.map(s => s * 1000), c: j.hourly.cloud_cover };
+    store.set("clouds", clouds);
+  } catch {}
+  cloudsLoading = false;
+  if (S.tab === "tonight") renderSheet();
+}
+function cloudAt(t) {
+  if (!clouds || clouds.key !== cloudsKey()) return null;
+  let best = -1, bd = Infinity;
+  clouds.t.forEach((x, i) => { const d = Math.abs(x - t); if (d < bd) { bd = d; best = i; } });
+  return bd <= 3600e3 ? clouds.c[best] : null;
+}
+function cloudWord(c) { return c < 20 ? "Clear" : c < 45 ? "Partly cloudy" : c < 75 ? "Mostly cloudy" : "Overcast"; }
+
+// The best visible passes tonight. Starlinks from one launch pass a minute or so apart, so they are
+// shown together as a train.
+function tonightPasses(win) {
+  if (!S.passes) return null;
+  const out = [], trains = new Map();
+  const vis = S.passes.filter(p => p.visible && p.end > Date.now() && p.start < win.end && p.end > win.start).sort((a, b) => a.start - b.start);
+  for (const p of vis) {
+    if (/^STARLINK/.test(p.sat.nameU)) {
+      const key = p.sat.l1.slice(9, 14), tr = trains.get(key);   // launch year + launch number
+      if (tr && p.start - tr.last < 15 * 60e3) { tr.count++; tr.last = p.start; tr.mag = Math.min(tr.mag, p.mag); tr.end = Math.max(tr.end, p.end); continue; }
+      const t = { ...p, count: 1, last: p.start, launch: intlDesig(p.sat.l1)?.code.replace(/[A-Z]+$/, "") };
+      trains.set(key, t); out.push(t);
+    } else out.push(p);
+  }
+  // brightest ten, with at most four Starlink entries so the rest of the sky gets a look in
+  let starlinks = 0;
+  return out.sort((a, b) => a.mag - b.mag)
+    .filter(p => !/^STARLINK/.test(p.sat.nameU) || ++starlinks <= 4)
+    .slice(0, 10).sort((a, b) => a.start - b.start);
+}
+const passTitle = p => p.count > 1 ? `Starlink train · ${p.count} satellites` : p.sat.name;
+
+function renderTonight(box) {
+  $("sheetTitle").textContent = "Tonight";
+  if (!S.loc) { box.innerHTML = `<div class="empty">Set your location in Settings first.</div>`; return; }
+  const win = nightWindow();
+  if (!win) { box.innerHTML = `<div class="empty">It doesn't get dark enough tonight to see satellites: the Sun stays less than 6° below the horizon.</div>`; return; }
+  if (!cloudsFresh()) loadClouds();
+
+  // clouds, hour by hour through the dark hours
+  const hours = [];
+  for (let t = Math.floor(win.start / 3600e3) * 3600e3; t < win.end; t += 3600e3) hours.push([t, cloudAt(t)]);
+  const known = hours.filter(h => h[1] != null);
+  let cloudHtml;
+  if (!known.length) cloudHtml = `<div class="tn-line"><span class="tn-k">Clouds</span><span>${cloudsLoading ? "Checking the forecast…" : "No forecast available (offline?)"}</span></div>`;
+  else {
+    const avg = known.reduce((s, h) => s + h[1], 0) / known.length;
+    let best = null, run = null;   // longest stretch under 40% cloud
+    for (const [t, c] of hours) {
+      if (c != null && c < 40) { run = run ? { ...run, to: t + 3600e3 } : { from: t, to: t + 3600e3 }; if (!best || run.to - run.from > best.to - best.from) best = run; }
+      else run = null;
+    }
+    const clearNote = best && avg >= 20 ? ` · clearest ${fmtTime(Math.max(best.from, win.start))}–${fmtTime(Math.min(best.to, win.end))}` : "";
+    cloudHtml = `<div class="tn-line"><span class="tn-k">Clouds</span><span>${cloudWord(avg)} (${Math.round(avg)}%)${clearNote}</span></div>
+      <div class="tn-line"><span></span><div class="clouds" style="grid-template-columns: repeat(${hours.length}, minmax(0, 1fr))" aria-label="Cloud cover by hour">${hours.map(([t, c]) =>
+        `<div class="cc" title="${fmtTime(t)}: ${c ?? "?"}% cloud"><b><span style="opacity:${c == null ? 0 : (c / 100).toFixed(2)}"></span></b><i>${new Date(t).getHours() % 3 === 0 ? fmtTime(t).replace(/:00(?!\d)/, "") : ""}</i></div>`).join("")}</div></div>`;
+  }
+
+  // the Moon: a bright Moon washes out faint satellites
+  const mt = moonTonight(win), lit = sky.moon ? Math.round(sky.moon.lit * 100) : null;
+  const moonWhen = mt.share === 0 ? "below the horizon all night" : mt.share === 1 ? "up all night"
+    : [mt.rise && `rises ${fmtTime(mt.rise)}`, mt.set && `sets ${fmtTime(mt.set)}`].filter(Boolean).join(", ");
+  const moonNote = lit != null && lit > 60 && mt.share > 0.4 ? ". Its light hides fainter satellites" : "";
+
+  const list = tonightPasses(win);
+  S.tonightList = list;
+  const passHtml = !list ? `<div class="empty">Working out tonight's passes…</div>`
+    : !list.length ? `<div class="empty">No bright passes in the dark hours tonight. Check the Passes tab for fainter ones.</div>`
+    : list.map((p, i) => {
+        const cc = cloudAt(p.maxTime), mins = Math.max(1, Math.round((p.end - p.start) / 60000));
+        const sub = `${compassName(p.startAz)} → ${compassName(p.endAz)} · highest ${p.maxEl.toFixed(0)}° in the ${compassName(p.maxAz)} · ${magText(p.mag)}, ${brightWord(p.mag)}` +
+          (p.count > 1 ? ` · launch ${p.launch}` : "") + (cc != null && cc >= 60 ? ` · ${cc}% cloud` : "");
+        return `<div class="pass">
+          <button class="row lit ${p.sat.id === S.targetId ? "sel" : ""}" data-id="${p.sat.id}"><span class="dot"></span>
+            <span class="nm">${esc(passTitle(p))}<span class="sub tn-wrap">${sub}</span></span>
+            <span class="num">${fmtTime(p.start)}<span class="sub">${dayWord(p.start)} · ${mins} min</span></span></button>
+          <button class="cal" data-i="${i}">Add to calendar</button></div>`;
+      }).join("");
+
+  box.innerHTML = `<div class="tonight">
+      <div class="tn-line"><span class="tn-k">Dark</span><span>${win.darkNow ? "Now" : fmtDayTime(win.start)} until ${fmtTime(win.end)}</span></div>
+      ${cloudHtml}
+      <div class="tn-line"><span class="tn-k">Moon</span><span>${lit != null ? `${lit}% lit, ` : ""}${moonWhen}${moonNote}</span></div>
+    </div>
+    <h4 class="tn-h">Best passes</h4>${passHtml}`;
+}
+
+// A calendar file for one pass, with a reminder 10 minutes before.
+const icsTime = ms => new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+const icsText = s => String(s).replace(/[\\;,]/g, m => "\\" + m).replace(/\n/g, "\\n");
+const icsFold = line => line.length <= 73 ? line : line.match(/.{1,73}/g).join("\r\n ");
+function addToCalendar(p) {
+  const title = p.count > 1 ? `Starlink train (${p.count} satellites)` : `${p.sat.name} pass`;
+  const desc = `Rises in the ${compassName(p.startAz)} at ${fmtTime(p.start)}, highest (${p.maxEl.toFixed(0)}°) in the ${compassName(p.maxAz)} at ${fmtTime(p.maxTime)}, gone in the ${compassName(p.endAz)} by ${fmtTime(p.end)}. Brightness about magnitude ${p.mag.toFixed(1)} (${brightWord(p.mag)}).`;
+  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Overhead//Satellite pass//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "BEGIN:VEVENT",
+    `UID:${p.sat.id}-${p.start}@overhead`, `DTSTAMP:${icsTime(Date.now())}`, `DTSTART:${icsTime(p.start - 60e3)}`, `DTEND:${icsTime(p.end + 60e3)}`,
+    `SUMMARY:${icsText(title)}`, `DESCRIPTION:${icsText(desc)}`, S.loc?.name ? `LOCATION:${icsText(S.loc.name)}` : "",
+    "BEGIN:VALARM", "TRIGGER:-PT10M", "ACTION:DISPLAY", `DESCRIPTION:${icsText(title)} in 10 minutes`, "END:VALARM",
+    "END:VEVENT", "END:VCALENDAR"].filter(Boolean).map(icsFold).join("\r\n");
+  const iOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (iOS) { location.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(ics); return; }   // Safari offers "Add to Calendar"
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+  a.download = `${title.replace(/[^\w]+/g, "-").replace(/-+$/, "").toLowerCase()}-${new Date(p.start).toISOString().slice(0, 10)}.ics`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  showHint("Calendar file saved. Open it to add the pass, with a reminder 10 minutes before.", 6000);
+}
+
 // --- details panel ---
 function openDetails(id) {
   const sat = S.byId.get(id); if (!sat) return;
@@ -1119,7 +1544,7 @@ function openDetails(id) {
   $("details").hidden = false; $("details").scrollTop = 0;
   $("detName").textContent = sat.name;
   const d = intlDesig(sat.l1);
-  $("detChips").innerHTML = [`<span class="chip k">${esc(CAT_LABEL[sat.cat])}</span>`, `<span class="chip">NORAD ${esc(sat.id)}</span>`, d ? `<span class="chip">${esc(d.code)}</span>` : ""].join("");
+  $("detChips").innerHTML = [`<span class="chip k">${esc(CAT_LABEL[sat.cat])}</span>`, `<span class="chip">NORAD ${fromAlpha5(sat.id)}</span>`, d ? `<span class="chip">${esc(d.code)}</span>` : ""].join("");
   renderOrbit(sat); renderNow(sat); renderAbout(sat, catMem.has(id) ? null : "loading");
   catalog(sat).then(() => { if (S.detailsId === id) renderAbout(sat); }).catch(() => { if (S.detailsId === id) renderAbout(sat, "offline"); });
   $("detPasses").innerHTML = `<p class="small">Working out passes…</p>`;
@@ -1136,7 +1561,7 @@ function renderNow(sat) {
     ["Where to look", l.el == null ? "Set your location first" : up ? `${compassName(l.az)} (${l.az.toFixed(0)}°), ${l.el.toFixed(0)}° above the horizon` : "Below your horizon"],
     ["Can you see it?", up ? visText(l.lit, l.mag).replace(/^./, c => c.toUpperCase()) : (l.lit ? "Sunlit, but below your horizon" : "No, it's in Earth's shadow")],
     ["Brightness", up && l.lit && l.mag != null ? `Magnitude ${l.mag.toFixed(1)}<span class="sub">${brightWord(l.mag)}. Estimated; lower is brighter.</span>` : null],
-    ["Typical brightness", `Magnitude ${sat.m0.toFixed(1)}<span class="sub">At 1,000 km away and half lit, the standard for comparing satellites</span>`],
+    ["Typical brightness", `Magnitude ${sat.m0.toFixed(1)}<span class="sub">At 1,000 km away and half lit, the standard for comparing satellites. ${MAG_SOURCE[sat.m0src] || ""}.</span>`],
     ["Distance from you", l.range != null ? fmtKm(l.range) : null],
     ["Height above Earth", fmtKm(l.alt)],
     ["Speed", `${l.speed.toFixed(2)} km/s <span class="sub">${Math.round(l.speed * 3600).toLocaleString("en")} km/h</span>`],
@@ -1219,6 +1644,90 @@ $("redBtn").addEventListener("click", () => {
   document.body.classList.toggle("red", on); $("redBtn").setAttribute("aria-pressed", on); store.set("red", on);
 });
 if (store.get("red", false)) { document.body.classList.add("red"); $("redBtn").setAttribute("aria-pressed", "true"); }
+
+// --- aligning on a star, planet or the Moon ---
+// The phone's compass is often 5-15 degrees off. Pointing at a real object and naming it gives the
+// true direction, and the difference becomes the compass correction (S.corr).
+async function startCamera() {
+  try {
+    ALIGN.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+    const v = $("cam"); v.srcObject = ALIGN.stream; v.hidden = false;
+    await v.play();
+    return true;
+  } catch { stopCamera(); return false; }
+}
+function stopCamera() {
+  if (ALIGN.stream) ALIGN.stream.getTracks().forEach(t => t.stop());
+  ALIGN.stream = null;
+  const v = $("cam"); v.srcObject = null; v.hidden = true;
+}
+// Where the phone points: the camera direction (out of the back), or the top edge when there is no camera.
+function pointing() { const R = S.R; return ALIGN.edge ? [R[1], R[4], R[7]] : [-R[2], -R[5], -R[8]]; }
+function alignCandidates() {
+  const p = pointing(), list = [];
+  for (const o of [sky.moon, ...sky.planets, ...sky.stars]) {
+    if (!o || o.el < 3 || (o.kind === "planet" && o.mag > 2.5) || (o.kind === "star" && o.mag > 2.1)) continue;
+    const d = Math.acos(Math.max(-1, Math.min(1, p[0] * o.v[0] + p[1] * o.v[1] + p[2] * o.v[2]))) * R2D;
+    if (d < 45) list.push({ o, d });
+  }
+  return list.sort((a, b) => a.d - b.d).slice(0, 5);
+}
+const KIND_LABEL = { moon: "the Moon", planet: "planet", star: "star" };
+const KIND_COLOR = { moon: "var(--moon)", planet: "var(--planet)", star: "var(--star)" };
+function renderAlignList() {
+  if (!ALIGN.on) return;
+  const list = alignCandidates(), box = $("alignList"), key = list.map(c => c.o.name).join("|");
+  // Rebuild only when the set of names changes, so a row doesn't vanish under your finger.
+  if (key !== ALIGN.key) {
+    ALIGN.key = key;
+    box.innerHTML = list.length ? list.map(({ o }) => `
+      <button class="row" data-name="${esc(o.name)}"><span class="dot" style="background:${KIND_COLOR[o.kind]}"></span>
+      <span class="nm">${esc(o.name)}<span class="sub">${KIND_LABEL[o.kind]} · magnitude ${o.kind === "moon" ? "−12" : o.mag.toFixed(1)}</span></span>
+      <span class="num"><span class="dist"></span><span class="sub">from ${ALIGN.edge ? "top edge" : "crosshair"}</span></span></button>`).join("")
+      : `<div class="empty">No bright stars or planets near where the phone points. Turn toward one and it will appear here.</div>`;
+  }
+  box.querySelectorAll(".row").forEach((row, i) => { row.querySelector(".dist").textContent = `${list[i].d.toFixed(0)}°`; });
+}
+async function openAlign() {
+  if (S.mode !== "sensor" || !S.R) { showHint("Aligning needs the motion sensors. Reload the page and tap Start instead of drag mode.", 6000); return; }
+  ALIGN.on = true; ALIGN.key = "";
+  $("alignBar").hidden = false; $("sheet").hidden = true; $("card").hidden = true;
+  $("alignHelp").textContent = "Starting the camera…";
+  $("alignList").innerHTML = "";
+  ALIGN.camera = await startCamera();
+  if (!ALIGN.on) { stopCamera(); ALIGN.camera = false; return; }   // cancelled while the camera started
+  ALIGN.edge = !ALIGN.camera;
+  $("alignHelp").textContent = ALIGN.camera
+    ? "Center a bright star, planet or the Moon in the crosshair, hold still, then tap its name."
+    : "The camera isn't available, so aim the top edge of your phone at a bright star, planet or the Moon, like a pointer. Hold still, then tap its name.";
+  renderAlignList();
+  ALIGN.timer = setInterval(renderAlignList, 400);
+}
+function closeAlign() {
+  ALIGN.on = false; clearInterval(ALIGN.timer);
+  stopCamera(); ALIGN.camera = false;
+  $("alignBar").hidden = true; $("sheet").hidden = false;
+  sheetH(); updateCard();
+}
+function alignOn(name) {
+  const o = [sky.moon, ...sky.planets, ...sky.stars].find(x => x && x.name === name);
+  if (!o) return;
+  const p = pointing(), az = (Math.atan2(p[0], p[1]) * R2D + 360) % 360, el = Math.asin(Math.max(-1, Math.min(1, p[2]))) * R2D;
+  const turn = angDiff(o.az, az);
+  S.corr = Math.round(angDiff(S.corr + turn, 0) * 10) / 10;
+  store.set("corr", S.corr);
+  closeAlign();
+  const heightOff = Math.abs(o.el - el), what = o.kind === "moon" ? "the Moon" : o.name;
+  showHint(`Lined up on ${what}. The compass was ${Math.abs(turn).toFixed(1)}° off and is now corrected.` +
+    (heightOff > 8 ? ` Its height was ${heightOff.toFixed(0)}° off too, so make sure that was ${what}.` : ""), 7000);
+}
+$("alignBtn").addEventListener("click", () => ALIGN.on ? closeAlign() : openAlign());
+$("alignCancel").addEventListener("click", closeAlign);
+$("alignReset").addEventListener("click", () => {
+  S.corr = 0; store.set("corr", 0); closeAlign();
+  showHint("Alignment removed. The app follows the phone's compass again.", 5000);
+});
+$("alignList").addEventListener("click", e => { const b = e.target.closest(".row"); if (b) alignOn(b.dataset.name); });
 
 // --- settings ---
 function updateLocNow() {
@@ -1331,12 +1840,15 @@ async function init() {
   setInterval(() => { computeSky(); updateStatus(); updateCard(); if (S.detailsId) renderNow(S.byId.get(S.detailsId)); }, 1000);
   setInterval(computePaths, 4000);
   setInterval(() => { if (S.tab === "now" && $("sheet").classList.contains("open") && document.activeElement !== $("findIn")) renderSheet(); }, 2000);
+  setInterval(() => { if (S.tab === "tonight" && $("sheet").classList.contains("open")) renderSheet(); }, 30000);
   setInterval(() => { if (S.loc && S.counts.bright && Date.now() - S.passesAt > 30 * 60e3) requestPasses(); }, 2000);
   // If the big list was refused, try again once CelesTrak's 2-hour wait is over.
   setInterval(() => {
     if (!S.counts.starlink && !S.counts.other && !/^Loading/.test(S.loading) && Date.now() - store.get("tleFail_active", 0) > 2 * 3600e3) loadActive(false);
   }, 5 * 60e3);
   new ResizeObserver(sheetH).observe($("sheet"));
+  // Offline support: keeps the app's files on the phone (see sw.js).
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   await loadSats(false);
 }
 init();

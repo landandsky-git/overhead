@@ -9,20 +9,23 @@ window.SAT_CODES = {
   TYPES: { PAY: "Payload (working spacecraft)", "R/B": "Rocket stage", DEB: "Debris", UNK: "Unknown" },
 
   // Typical ("standard") brightness: the magnitude a satellite would have 1,000 km away and half lit.
-  // Lower is brighter. Rough values by type; real satellites vary by about ±1. First match wins.
+  // Lower is brighter. Used when data/mags.json has no measured value for a satellite.
+  // [pattern, magnitude, sure]: "sure" entries come from published measurements of that satellite
+  // family and also win over the rougher estimate from radar size. First match wins.
+  // Starlink is handled separately by generation and orbit (starlinkMag in index.html).
   STD_MAG: [
-    [/^ISS/, -1.8],
-    [/^(CSS|TIANHE|TIANGONG)/, -0.5],
-    [/^(HST|HUBBLE)/, 2.2],
-    [/^STARLINK/, 5.8],
-    [/^KUIPER/, 5.5],
-    [/^ONEWEB/, 7.0],
-    [/^SL-16 R\/B/, 2.0],
-    [/^(SL-14|SL-3) R\/B/, 3.5],
-    [/^(H-2A|H-IIA|ARIANE|FALCON 9)/, 3.5],
-    [/R\/B/, 4.0],
+    [/^ISS( \(|$)/, -1.3, true],
+    [/^(CSS \(|TIANHE|TIANGONG)/, -0.5, true],
+    [/^ISS OBJECT/, 8.0, true],   // small satellites released from the station
+    [/^(BLUEBIRD|BLUEWALKER|SPACEMOBILE)/, 2.5, true],
+    [/^KUIPER/, 5.5, true],
+    [/^ONEWEB/, 7.0, true],
+    [/^(FLOCK|DOVE|SUPERDOVE|LEMUR|SPACEBEE|TIANQI)/, 8.0, true],
+    [/^SL-16 R\/B/, 3.2],
+    [/^(SL-14|SL-3) R\/B/, 4.5],
+    [/^(H-2A|H-IIA|ARIANE|FALCON 9)/, 4.5],
+    [/R\/B/, 5.0],
     [/ DEB/, 7.0],
-    [/^(FLOCK|DOVE|SUPERDOVE|LEMUR|SPACEBEE|TIANQI)/, 8.0],
     [/^ORBCOMM/, 6.5],
     [/^(YAOGAN|NOAA|METOP|FENGYUN|FY-)/, 4.5],
     [/^(COSMOS|IRIDIUM|GLOBALSTAR)/, 5.0],
@@ -40,7 +43,7 @@ window.SAT_CODES = {
     [/^GLOBALSTAR/, "Globalstar", "Satellite phones and data"],
     [/^ORBCOMM/, "ORBCOMM", "Machine-to-machine messaging"],
     [/^SPACEBEE/, "Swarm Technologies (SpaceX)", "Low-cost IoT messaging"],
-    [/^BLUEBIRD/, "AST SpaceMobile", "Direct-to-phone broadband"],
+    [/^(BLUEBIRD|BLUEWALKER|SPACEMOBILE)/, "AST SpaceMobile", "Direct-to-phone broadband"],
     [/^LYNK/, "Lynk Global", "Direct-to-phone messaging"],
     [/^TIANQI/, "Guodian Gaoke", "IoT messaging"],
     [/^(FLOCK|DOVE|SUPERDOVE|SKYSAT|PELICAN|TANAGER)/, "Planet Labs", "Earth imaging"],
@@ -56,8 +59,9 @@ window.SAT_CODES = {
     [/^BEIDOU/, "China Satellite Navigation Office", "BeiDou navigation"],
     [/^(QZS|MICHIBIKI)/, "Japan Cabinet Office", "QZSS navigation"],
     [/^(IRNSS|NVS)/, "ISRO (India)", "NavIC navigation"],
-    [/^ISS/, "NASA, Roscosmos, ESA, JAXA, CSA", "Crewed space station"],
-    [/^(CSS|TIANHE|TIANGONG|WENTIAN|MENGTIAN)/, "China Manned Space Agency", "Crewed space station"],
+    [/^ISS( \(|$)/, "NASA, Roscosmos, ESA, JAXA, CSA", "Crewed space station"],
+    [/^ISS OBJECT/, null, "Small satellite released from the space station"],
+    [/^(CSS \(|TIANHE|TIANGONG|WENTIAN|MENGTIAN)/, "China Manned Space Agency", "Crewed space station"],
     [/^(SHENZHOU|TIANZHOU)/, "China Manned Space Agency", "Crew or cargo spacecraft"],
     [/^(PROGRESS|SOYUZ)/, "Roscosmos (Russia)", "Space station crew or cargo"],
     [/^(DRAGON|CREW DRAGON|CRS-)/, "SpaceX", "Space station crew or cargo"],
