@@ -86,6 +86,7 @@ body.timeshift .hint { top: calc(env(safe-area-inset-top, 0px) + 118px); }
 .card .where { font: 13px var(--font-data); color: var(--ink); }
 .card .meta { font: 11px var(--font-data); color: var(--dim); }
 .card .more { font: 11px var(--font-data); color: var(--target); margin-top: 2px; }
+.card .favbtn { font-size: 20px; line-height: 1; padding: 0 2px 2px 8px; color: var(--lit); letter-spacing: 0; text-transform: none; }
 .card button { font: 11px var(--font-data); color: var(--dim); text-transform: uppercase; letter-spacing: .08em; padding: 4px 0 4px 8px; }
 
 .sheet { position: fixed; left: 0; right: 0; bottom: 0; background: var(--panel); border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 8px); max-height: 62%; display: flex; flex-direction: column; touch-action: pan-y; }
@@ -170,6 +171,19 @@ button.passrow { width: 100%; text-align: left; }
 .pass .row { border-top: 0; padding-bottom: 4px; }
 .row .sub.tn-wrap { white-space: normal; }
 .cal { font: 11px var(--font-data); color: var(--target); text-transform: uppercase; letter-spacing: .06em; padding: 2px 0 10px 20px; }
+.guide { position: fixed; inset: 0; background: rgba(3, 5, 10, .62); display: flex; align-items: flex-end; justify-content: center; padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 96px); }
+.guide-card { width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 8px; }
+.guide-card h2 { margin: 0; font: 600 18px var(--font-display); letter-spacing: .06em; text-transform: uppercase; }
+.guide-card p { margin: 0; color: var(--ink); line-height: 1.5; }
+.guide-step { font: 11px var(--font-data); color: var(--dim); letter-spacing: .08em; }
+.guide-actions { display: flex; justify-content: space-between; align-items: center; padding-top: 6px; }
+.guide-actions .primary { padding: 10px 22px; }
+.spot { outline: 2px solid var(--target); outline-offset: 3px; animation: spot 1.2s ease-in-out infinite; }
+@keyframes spot { 50% { outline-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .spot { animation: none; } }
+.faq details { border-top: 1px solid var(--line); padding-top: 8px; }
+.faq summary { color: var(--ink); }
+.faq details p { padding-top: 6px; }
 .linkbtn { color: var(--target); font: 12px var(--font-data); text-transform: uppercase; letter-spacing: .08em; padding: 8px 0; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 </style>
@@ -192,7 +206,7 @@ button.passrow { width: 100%; text-align: left; }
 <div class="readout" id="readout"></div>
 
 <div class="card" id="card" role="button" tabindex="0" aria-label="Show satellite details" hidden>
-  <div class="card-top"><h3 id="cardName"></h3><button id="cardClose">Clear</button></div>
+  <div class="card-top"><h3 id="cardName"></h3><button class="favbtn" id="cardFav" aria-pressed="false" aria-label="Favorite">☆</button><button id="cardClose">Clear</button></div>
   <div class="where" id="cardWhere"></div>
   <div class="meta" id="cardMeta"></div>
   <div class="meta" id="cardAbout"></div>
@@ -303,12 +317,36 @@ button.passrow { width: 100%; text-align: left; }
       <p class="small" id="tleInfo"></p>
       <button class="secondary" id="refreshBtn">Download fresh satellite data</button>
     </section>
+
+    <section class="group faq">
+      <h3>Help</h3>
+      <button class="secondary" id="guideBtn">Show the quick guide again</button>
+      <details><summary>Why can't I see a satellite the app shows?</summary>
+        <p class="small">It may be in Earth's shadow (a blue dot), too faint for your sky, washed out by twilight or moonlight, or behind clouds. Satellites also look brightest with the Sun behind you. If everything seems shifted, line up the compass with ◎.</p></details>
+      <details><summary>What does magnitude mean?</summary>
+        <p class="small">Astronomers' brightness scale, where lower numbers are brighter. Venus is about −4, the brightest stars around 0, and magnitude 6 is the faintest you can see in a very dark sky.</p></details>
+      <details><summary>How accurate is it?</summary>
+        <p class="small">Positions are usually within a fraction of a degree, because the satellite data updates every few hours. The phone's compass is the biggest error, which aligning with ◎ fixes. Brightness is an estimate, usually within about one magnitude.</p></details>
+      <details><summary>Does it work without signal?</summary>
+        <p class="small">Yes. Once you've opened it with signal, the app and its satellite data are saved on your phone. Data older than a week gets less accurate.</p></details>
+      <details><summary>Why does the view jump when I point straight up?</summary>
+        <p class="small">Your phone may be switching between portrait and landscape. Turn on rotation lock while you use the app.</p></details>
+    </section>
+  </div>
+</div>
+
+<div class="guide" id="guide" hidden role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+  <div class="guide-card">
+    <div class="guide-step" id="guideStep"></div>
+    <h2 id="guideTitle"></h2>
+    <p id="guideText"></p>
+    <div class="guide-actions"><button class="linkbtn" id="guideSkip">Skip</button><button class="primary" id="guideNext">Next</button></div>
   </div>
 </div>
 
 <div class="overlay page" id="details" hidden>
   <div class="intro det">
-    <div class="panel-head"><button class="linkbtn" id="detBack">‹ Back to sky</button></div>
+    <div class="panel-head"><button class="linkbtn" id="detBack">‹ Back to sky</button><button class="linkbtn" id="detFav" aria-pressed="false">☆ Add to favorites</button></div>
     <h2 id="detName"></h2>
     <div class="chips" id="detChips"></div>
     <section class="group"><h3 id="detNowH">Right now</h3><dl id="detNow"></dl></section>
@@ -321,6 +359,7 @@ button.passrow { width: 100%; text-align: left; }
 
 <script src="lib/satellite.min.js"></script>
 <script src="codes.js"></script>
+<script src="sky-data.js"></script>
 <script>
 "use strict";
 const D2R = Math.PI / 180, R2D = 180 / Math.PI;
@@ -338,7 +377,8 @@ const S = {
   corr: store.get("corr", 0),
   show: Object.assign({ bright: true, starlink: true, other: true }, store.get("show", {})),
   eyeOnly: store.get("eyeOnly", false),
-  limit: store.get("limit", 4.5),       // faintest magnitude visible from the viewer's sky (see SKY_LIMITS)
+  limit: store.get("limit", 4.5),
+  favs: new Set(store.get("favs", ["25544", "48274", "20580"])),   // favourite satellites: ISS, Tiangong, Hubble to start       // faintest magnitude visible from the viewer's sky (see SKY_LIMITS)
   timeOffset: 0,                        // ms the time slider moves the sky away from now
   sats: [], byId: new Map(), counts: { bright: 0, starlink: 0, other: 0 }, trains: new Map(),
   gen: 0, now: [], nowMap: new Map(),   // positions from the worker: idx -> {sat, az, el, range, lit, v}
@@ -633,7 +673,7 @@ function vNow(e, now) {
 // Passes are worked out for the bright list plus anything else bright enough to be worth going out
 // for (typical brightness 5 or brighter, which includes freshly launched Starlink trains).
 function requestPasses() {
-  const indices = S.sats.filter(s => s.cat === "bright" || s.m0 <= 5).map(s => s.idx);
+  const indices = S.sats.filter(s => s.cat === "bright" || s.m0 <= 5 || S.favs.has(s.id)).map(s => s.idx);
   S.passesAt = Date.now();
   worker.postMessage({ type: "passes", t: Date.now(), hours: 14, indices, limit: S.limit, job: ++S.passJob });
 }
@@ -681,29 +721,34 @@ function magnitude(m0, p, sunV, obs, range, el) {
 // How faint you can see depends on your sky (Settings): about magnitude 3.5 in a city centre,
 // 4.5 in a suburb, 5.5 in a village and 6.5 in dark countryside. S.limit holds that limit.
 const SKY_LIMITS = [[3.5, "City"], [4.5, "Suburb"], [5.5, "Village"], [6.5, "Dark countryside"]];
-function brightWord(mag) {
-  const L = S.limit;
+// What you can actually see right now is less: twilight and moonlight brighten the sky. Twilight takes
+// up to 3.5 magnitudes off between the Sun 18 and 6 degrees below the horizon; a full Moon high up
+// takes off up to half of what your sky gains over a city's (the darker your sky, the more it loses).
+function skyLimitAt(sunEl, moonEl, moonLit) {
+  const twilight = Math.pow(Math.min(1, Math.max(0, (sunEl + 18) / 12)), 1.5) * 3.5;
+  const moon = moonEl > 0 ? Math.pow(moonLit, 1.5) * Math.max(0, S.limit - 3) * 0.5 * Math.min(1, moonEl / 20) : 0;
+  return Math.round((S.limit - twilight - moon) * 10) / 10;
+}
+const limitNow = () => sky.moon ? skyLimitAt(sky.sunEl, sky.moon.el, sky.moon.lit) : S.limit;
+// Sun and Moon at any moment, and how faint you can see then.
+function conditionsAt(t) {
+  const d = new Date(t), g = satellite.gstime(d), s = sunPos(d), lat = S.loc.lat * D2R, lon = S.loc.lon * D2R;
+  const sunEl = raDecToAltAz(s.ra, s.dec, g, lat, lon).el, mo = moonPos(d), ma = raDecToAltAz(mo.ra, mo.dec, g, lat, lon);
+  const moonLit = (1 - Math.cos(mo.lat) * Math.cos(mo.lon - s.lam)) / 2, moonEl = ma.el - mo.parallax * Math.cos(ma.el * D2R);
+  return { sunEl, moonEl, moonLit, limit: skyLimitAt(sunEl, moonEl, moonLit) };
+}
+// "down to magnitude 3.9 (Moon 70% lit)": the limit and what is taking it below your sky setting
+function seeingText(c) {
+  const why = [];
+  if (c.sunEl > -15) why.push("twilight");
+  if (c.moonEl > 0 && c.moonLit > 0.25 && S.limit > 3.5) why.push(`Moon ${Math.round(c.moonLit * 100)}% lit`);
+  return `down to magnitude ${c.limit.toFixed(1)}${why.length ? ` (${why.join(", ")})` : ""}`;
+}
+function brightWord(mag, L = limitNow()) {
   return mag < L - 5 ? "very bright" : mag < L - 3 ? "bright" : mag < L - 1.5 ? "easy to see"
     : mag < L ? "faint, but visible from your sky" : "too faint to see from your sky";
 }
 function enu(az, el) { az *= D2R; el *= D2R; return [Math.sin(az) * Math.cos(el), Math.cos(az) * Math.cos(el), Math.sin(el)]; }
-
-// Bright stars for orientation: [name, RA hours, Dec deg, mag]
-const STARS = [
-  ["Sirius",6.752,-16.716,-1.46],["Canopus",6.399,-52.696,-0.74],["Arcturus",14.261,19.182,-0.05],["Rigil Kent",14.660,-60.834,-0.27],
-  ["Vega",18.616,38.784,0.03],["Capella",5.278,45.998,0.08],["Rigel",5.242,-8.202,0.13],["Procyon",7.655,5.225,0.34],
-  ["Betelgeuse",5.919,7.407,0.5],["Achernar",1.629,-57.237,0.46],["Hadar",14.064,-60.373,0.61],["Altair",19.846,8.868,0.76],
-  ["Acrux",12.443,-63.099,0.76],["Aldebaran",4.599,16.509,0.86],["Antares",16.490,-26.432,0.96],["Spica",13.420,-11.161,0.97],
-  ["Pollux",7.755,28.026,1.14],["Fomalhaut",22.961,-29.622,1.16],["Deneb",20.690,45.280,1.25],["Mimosa",12.795,-59.689,1.25],
-  ["Regulus",10.140,11.967,1.35],["Castor",7.577,31.888,1.58],["Bellatrix",5.419,6.350,1.64],["Alnilam",5.604,-1.202,1.69],
-  ["Alnitak",5.679,-1.943,1.74],["Mintaka",5.533,-0.299,2.23],["Polaris",2.530,89.264,1.98],["Dubhe",11.062,61.751,1.79],
-  ["Merak",11.031,56.383,2.37],["Phecda",11.897,53.695,2.44],["Megrez",12.257,57.033,3.3],["Alioth",12.900,55.960,1.77],
-  ["Mizar",13.399,54.925,2.2],["Alkaid",13.792,49.313,1.86],["Saiph",5.796,-9.670,2.07],["Schedar",0.675,56.537,2.24],
-  ["Caph",0.153,59.150,2.28],["Ruchbah",1.430,60.235,2.68],["Segin",1.907,63.670,3.35],["Navi",0.945,60.717,2.47],
-];
-const LINES = [["Dubhe","Merak"],["Merak","Phecda"],["Phecda","Megrez"],["Megrez","Dubhe"],["Megrez","Alioth"],["Alioth","Mizar"],["Mizar","Alkaid"],
-  ["Betelgeuse","Bellatrix"],["Bellatrix","Mintaka"],["Betelgeuse","Alnitak"],["Mintaka","Alnilam"],["Alnilam","Alnitak"],["Alnitak","Saiph"],["Mintaka","Rigel"],
-  ["Caph","Schedar"],["Schedar","Navi"],["Navi","Ruchbah"],["Ruchbah","Segin"]];
 
 // Ecliptic <-> equatorial coordinates (radians); J2000 obliquity unless given.
 const OBLIQUITY = 23.43928 * D2R;
@@ -765,17 +810,29 @@ function moonPos(date) {
   return { ra, dec, lon: lon * D2R, lat: lat * D2R, parallax: par };
 }
 
-const sky = { stars: [], planets: [], moon: null, sunEl: -90, sunV: [0, 0, -1] };
+// Stars to magnitude 4, constellation lines and names (sky-data.js), shifted once for the Earth's
+// axis wobble since 2000 (it changes far too slowly to matter during one night).
+const CATALOG = (() => {
+  const d = window.SKY_DATA || { stars: [], lines: [], names: [] }, now = new Date();
+  const pr = (ra, dec) => precess(ra * D2R, dec * D2R, now);
+  return {
+    stars: d.stars.map(([ra, dec, mag, name]) => ({ name, mag, ...pr(ra, dec) })),
+    lines: d.lines.map(seg => seg.map(([ra, dec]) => pr(ra, dec))),
+    names: d.names.map(([ra, dec, name, rank]) => ({ name, rank, ...pr(ra, dec) })),
+  };
+})();
+
+const sky = { stars: [], lines: [], names: [], planets: [], moon: null, sunEl: -90, sunV: [0, 0, -1] };
 function computeSky() {
   if (!S.loc) return;
   const date = new Date(simNow()), gmst = satellite.gstime(date), sun = sunPos(date);
   const lat = S.loc.lat * D2R, lon = S.loc.lon * D2R;
   const sa = raDecToAltAz(sun.ra, sun.dec, gmst, lat, lon);
   sky.sunEl = sa.el; sky.sunV = enu(sa.az, sa.el);
-  sky.stars = STARS.map(s => {
-    const p = precess(s[1] * 15 * D2R, s[2] * D2R, date), a = raDecToAltAz(p.ra, p.dec, gmst, lat, lon);
-    return { name: s[0], kind: "star", mag: s[3], ...a, v: enu(a.az, a.el) };
-  });
+  const place = o => { const a = raDecToAltAz(o.ra, o.dec, gmst, lat, lon); return { ...a, v: enu(a.az, a.el) }; };
+  sky.stars = CATALOG.stars.map(s => ({ name: s.name, kind: "star", mag: s.mag, ...place(s) }));
+  sky.lines = CATALOG.lines.map(seg => seg.map(place));
+  sky.names = CATALOG.names.map(n => ({ name: n.name, rank: n.rank, ...place(n) }));
   sky.planets = planetPositions(date).map(p => { const a = raDecToAltAz(p.ra, p.dec, gmst, lat, lon); return { name: p.name, kind: "planet", mag: p.mag, ...a, v: enu(a.az, a.el) }; });
   const m = moonPos(date), ma = raDecToAltAz(m.ra, m.dec, gmst, lat, lon);
   ma.el -= m.parallax * Math.cos(ma.el * D2R);
@@ -845,10 +902,13 @@ function passesFor(sat) {
         if (!cur) cur = { start: +date, startAz: az, maxEl: -90, visible: false, mag: 99 };
         if (el > cur.maxEl) { cur.maxEl = el; cur.maxTime = +date; cur.maxAz = az; }
         if (el > 10) {
-          const sun = sunPos(date);
-          if (raDecToAltAz(sun.ra, sun.dec, gmst, lat, lon).el < -6 && !inShadow(pv.position, sun.v)) {
-            cur.mag = Math.min(cur.mag, magnitude(sat.m0, pv.position, sun.v, observerEci(gmst), la.rangeSat, el));
-            if (cur.mag < S.limit) cur.visible = true;
+          const sun = sunPos(date), se = raDecToAltAz(sun.ra, sun.dec, gmst, lat, lon).el;
+          if (se < -6 && !inShadow(pv.position, sun.v)) {
+            const mag = magnitude(sat.m0, pv.position, sun.v, observerEci(gmst), la.rangeSat, el);
+            const mo = moonPos(date), ma = raDecToAltAz(mo.ra, mo.dec, gmst, lat, lon);
+            const limit = skyLimitAt(se, ma.el, (1 - Math.cos(mo.lat) * Math.cos(mo.lon - sun.lam)) / 2);
+            if (mag < cur.mag) { cur.mag = mag; cur.limit = limit; }
+            if (mag < limit) cur.visible = true;
           }
         }
         cur.end = +date; cur.endAz = az;
@@ -1167,21 +1227,30 @@ function draw() {
   for (const alt of [30, 60]) { const q = project(Math.round(viewAz(R) / 30) * 30 + 15, alt, R, f, th); if (q.front) ctx.fillText(alt + "°", q.x, q.y - 6); }
   { const q = project(0, 90, R, f, th); if (q.front) ctx.fillText("ZENITH", q.x, q.y - 8); }
 
-  // stars and constellation lines
-  const byName = {};
-  for (const s of sky.stars) byName[s.name] = s;
-  ctx.strokeStyle = C.line;
-  for (const [a, b] of LINES) {
-    const A = byName[a], B = byName[b]; if (!A || !B || A.el < 0 || B.el < 0) continue;
-    const p = P(A.v), q = P(B.v);
-    if (!p.front || !q.front) continue;
-    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+  // constellation outlines and names (above the horizon only)
+  ctx.strokeStyle = C.line; ctx.lineWidth = 1;
+  for (const seg of sky.lines) {
+    ctx.beginPath();
+    let pen = false;
+    for (const pt of seg) {
+      const q = pt.el > -1 ? P(pt.v) : null;
+      if (!q || !q.front) { pen = false; continue; }
+      if (pen) ctx.lineTo(q.x, q.y); else { ctx.moveTo(q.x, q.y); pen = true; }
+    }
+    ctx.stroke();
   }
-  ctx.textAlign = "left";
+  ctx.font = `600 9px ${FONT_D}`; ctx.fillStyle = C.line; ctx.textAlign = "center";
+  for (const n of sky.names) {
+    if (n.rank > 2 || n.el < 3) continue;
+    const q = P(n.v); if (q.front) ctx.fillText(n.name.toUpperCase(), q.x, q.y);
+  }
+  // stars: anything fainter than what your sky shows right now is drawn faintly
+  const seeLimit = limitNow();
+  ctx.font = `10px ${FONT_M}`; ctx.textAlign = "left";
   for (const s of sky.stars) {
     if (s.el < -1) continue;
     const q = P(s.v); if (!q.front) continue;
-    ctx.fillStyle = C.star; ctx.globalAlpha = magAlpha(s.mag);
+    ctx.fillStyle = C.star; ctx.globalAlpha = s.mag > seeLimit ? 0.22 : magAlpha(s.mag);
     ctx.beginPath(); ctx.arc(q.x, q.y, magRadius(s.mag), 0, 7); ctx.fill(); ctx.globalAlpha = 1;
     if (s.mag < 1.3) { ctx.fillStyle = C.dim; ctx.fillText(s.name, q.x + 5, q.y + 8); }
   }
@@ -1229,8 +1298,8 @@ function draw() {
   const nowMs = simNow();
   for (const e of S.now) {
     if (e.el < 0) continue;
-    const isT = tgtSat && e.sat === tgtSat;
-    if (!isT && (!S.show[e.sat.cat] || (S.eyeOnly && !(e.lit && e.mag <= S.limit)))) continue;
+    const isT = (tgtSat && e.sat === tgtSat) || S.favs.has(e.sat.id);
+    if (!isT && (!S.show[e.sat.cat] || (S.eyeOnly && !(e.lit && e.mag <= seeLimit)))) continue;
     const q = P(vNow(e, nowMs));
     if (!q.front || q.x < -20 || q.x > W + 20 || q.y < -20 || q.y > H + 20) continue;
     if (e.lit) {
@@ -1262,9 +1331,9 @@ function draw() {
   const boxes = [[cx - 75, cy + 14, 150, 26]];
   const label = (e, color, force) => {
     if (labeled.has(e.sat.idx)) return;
-    const w = ctx.measureText(e.sat.name).width, b = [e.qx + 6, e.qy - 17, w + 2, 14];
+    const text = favName(e.sat), w = ctx.measureText(text).width, b = [e.qx + 6, e.qy - 17, w + 2, 14];
     if (!force && boxes.some(o => b[0] < o[0] + o[2] && o[0] < b[0] + b[2] && b[1] < o[1] + o[3] && o[1] < b[1] + b[3])) return;
-    boxes.push(b); labeled.add(e.sat.idx); ctx.fillStyle = color; ctx.fillText(e.sat.name, e.qx + 7, e.qy - 6);
+    boxes.push(b); labeled.add(e.sat.idx); ctx.fillStyle = color; ctx.fillText(text, e.qx + 7, e.qy - 6);
   };
   const tgt = tgtSat ? S.nowMap.get(tgtSat.idx) : null;
   if (tgt && tgt.el > 0 && tgt.frame === frameNo) {
@@ -1273,6 +1342,7 @@ function draw() {
   litDrawn.sort((a, b) => a.mag - b.mag);
   near.sort((a, b) => a[0] - b[0]);
   const wanted = [];
+  for (const e of S.now) if (e.frame === frameNo && S.favs.has(e.sat.id)) wanted.push([e, C.ink]);
   for (let k = 0; k < Math.min(30, litDrawn.length) && litDrawn[k].mag < 4; k++) wanted.push([litDrawn[k], C.ink]);
   for (let k = 0; k < Math.min(6, near.length); k++) wanted.push([near[k][1], C.dim]);
   for (const [e, color] of wanted) if (prevLabels.has(e.sat.idx)) label(e, color);
@@ -1343,14 +1413,14 @@ const rows = list => list.filter(r => r && r[1] != null && r[1] !== "").map(([k,
 function showHint(msg, ms) { const h = $("hint"); h.textContent = msg; h.hidden = false; clearTimeout(showHint.t); showHint.t = ms ? setTimeout(() => h.hidden = true, ms) : 0; }
 
 const upTitle = () => S.timeOffset ? `Up at ${fmtTime(simNow())}` : "Up now";
-const visibleNow = () => S.now.filter(e => e.el > 0 && S.show[e.sat.cat] && (!S.eyeOnly || (e.lit && e.mag <= S.limit)));
+const visibleNow = () => { const L = limitNow(); return S.now.filter(e => e.el > 0 && S.show[e.sat.cat] && (!S.eyeOnly || (e.lit && e.mag <= L))); };
 
 function updateStatus() {
   const bits = [];
   if (S.timeOffset) bits.push(`◷ ${fmtTime(simNow())}`);
   if (S.loc) bits.push(S.loc.name ? S.loc.name.split(",")[0] : fmtLatLon(S.loc.lat, S.loc.lon));
   const up = visibleNow();
-  if (sky.sunEl < -6) bits.push(`${up.filter(e => e.lit && e.mag <= S.limit).length.toLocaleString("en")} visible by eye`);
+  if (sky.sunEl < -6) { const L = limitNow(); bits.push(`${up.filter(e => e.lit && e.mag <= L).length.toLocaleString("en")} visible by eye`); }
   bits.push(`${up.length.toLocaleString("en")} up`);
   // Loading and download-limit messages get their own line so they aren't cut off on a phone.
   const notice = $("notice");
@@ -1423,7 +1493,7 @@ function watchText(sat, n) {
     try { navigator.vibrate?.(pattern); } catch {}
     showHint(msg, 8000);
   };
-  const vis = p.visible ? (p.mag < 50 ? ` · ${magText(p.mag)}, ${brightWord(p.mag)}` : "") : " · not visible (in Earth's shadow or the sky is too bright)";
+  const vis = p.visible ? (p.mag < 50 ? ` · ${magText(p.mag)}, ${brightWord(p.mag, p.limit)}` : "") : " · not visible (in Earth's shadow or the sky is too bright)";
   if (now < p.start) {
     if (p.start - now <= 60e3 && p.start - now > 45e3) buzz("soon", [150], `${name} rises in 1 minute in the ${compassName(p.startAz)}.`);
     return [`Rises in ${fmtCountdown(p.start - now)} in the ${compassName(p.startAz)} (${p.startAz.toFixed(0)}°)`,
@@ -1441,6 +1511,7 @@ function updateCard() {
   if (!sat || ALIGN.on) { card.hidden = true; return; }
   card.hidden = false;
   $("cardName").textContent = sat.name;
+  updateFavButtons();
   const n = S.nowMap.get(sat.idx);
   let where, meta;
   const watching = WATCH.sat === sat && WATCH.pass && !S.timeOffset ? watchText(sat, n) : null;
@@ -1481,8 +1552,11 @@ function satRow(sat, extraClass) {
   const n = S.nowMap.get(sat.idx), up = n && n.el > 0;
   const cls = `row ${up ? (n.lit ? "lit" : "") : "down"} ${sat.id === S.targetId ? "sel" : ""} ${extraClass || ""}`;
   const right = up ? `${compassName(n.az)} ${n.az.toFixed(0)}°<span class="sub">${n.el.toFixed(0)}° up</span>` : `<span class="sub">below horizon</span>`;
-  const sub = up ? `${n.lit ? magText(n.mag) : "in shadow"} · ${fmtKm(n.range)}` : `${CAT_LABEL[sat.cat]} · #${sat.id}`;
-  return `<button class="${cls}" data-id="${sat.id}"><span class="dot"></span><span class="nm">${esc(sat.name)}<span class="sub">${sub}</span></span><span class="num">${right}</span></button>`;
+  const np = !up && isFav(sat) && S.loc ? nextPass(sat) : null;
+  const sub = up ? `${n.lit ? magText(n.mag) : "in shadow"} · ${fmtKm(n.range)}`
+    : np ? `rises ${fmtDayTime(np.start)} in the ${compassName(np.startAz)}${np.visible ? " (visible)" : ""}`
+    : isFav(sat) && S.loc ? "doesn't rise above 10° here in the next 2 days" : `${CAT_LABEL[sat.cat]} · #${sat.id}`;
+  return `<button class="${cls}" data-id="${sat.id}"><span class="dot"></span><span class="nm">${esc(favName(sat))}<span class="sub">${sub}</span></span><span class="num">${right}</span></button>`;
 }
 
 function renderSheet() {
@@ -1509,7 +1583,9 @@ function renderSheet() {
     } else {
       const list = up.slice().sort((a, b) => (b.lit - a.lit) || (a.lit ? a.mag - b.mag : b.el - a.el));
       const shown = list.slice(0, 100);
-      box.innerHTML = `<div class="legend"><span class="l">Sunlit, brightest first</span><span>In Earth's shadow</span></div>` +
+      const favs = [...S.favs].map(id => S.byId.get(id)).filter(Boolean);
+      box.innerHTML = (favs.length ? `<h4 class="tn-h">Favorites</h4>` + favs.map(sat => satRow(sat)).join("") + `<h4 class="tn-h">Up now</h4>` : "") +
+        `<div class="legend"><span class="l">Sunlit, brightest first</span><span>In Earth's shadow</span></div>` +
         `<div class="note">Lower magnitude means brighter. Magnitude 6 is about the faintest you can see by eye in a dark sky.</div>` +
         shown.map(e => satRow(e.sat)).join("") +
         (list.length > shown.length ? `<div class="note">Showing 100 of ${list.length.toLocaleString("en")} satellites above the horizon. Search above to find a specific one.</div>` : "");
@@ -1525,7 +1601,7 @@ function renderSheet() {
         (list.length ? list.map((p, i) => `
         <button class="row ${p.visible ? "lit" : ""} ${p.sat.id === S.targetId ? "sel" : ""}" data-id="${p.sat.id}" data-pass="passes:${i}">
           <span class="dot"></span>
-          <span class="nm">${esc(p.sat.name)}<span class="sub">${compassName(p.startAz)} → ${compassName(p.endAz)} · peak ${p.maxEl.toFixed(0)}°${p.visible ? ` · ${magText(p.mag)}` : ""}</span></span>
+          <span class="nm">${esc(favName(p.sat))}<span class="sub">${compassName(p.startAz)} → ${compassName(p.endAz)} · peak ${p.maxEl.toFixed(0)}°${p.visible ? ` · ${magText(p.mag)}` : ""}</span></span>
           <span class="num">${fmtTime(p.start)}<span class="sub">${dayWord(p.start)} · ${Math.max(1, Math.round((p.end - p.start) / 60000))} min</span></span>
         </button>`).join("") : `<div class="empty">No passes above 15° in the next 12 hours.</div>`);
     }
@@ -1550,6 +1626,23 @@ $("tabPasses").addEventListener("click", () => { S.tab = "passes"; $("sheet").cl
 $("card").addEventListener("click", () => { if (S.targetId) openDetails(S.targetId); });
 $("card").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && S.targetId) { e.preventDefault(); openDetails(S.targetId); } });
 $("cardClose").addEventListener("click", e => { e.stopPropagation(); setTarget(null); });
+$("cardFav").addEventListener("click", e => { e.stopPropagation(); if (S.targetId) toggleFav(S.targetId); });
+$("detFav").addEventListener("click", () => { if (S.detailsId) toggleFav(S.detailsId); });
+
+// --- favourites: always labelled on the sky, listed first, and always in Tonight when visible ---
+const isFav = sat => !!sat && S.favs.has(sat.id);
+const favName = sat => (isFav(sat) ? "★ " : "") + sat.name;
+function toggleFav(id) {
+  if (S.favs.has(id)) S.favs.delete(id); else S.favs.add(id);
+  store.set("favs", [...S.favs]);
+  S.passesAt = 0;   // passes are worked out for favourites too
+  updateFavButtons(); renderSheet();
+}
+function updateFavButtons() {
+  const on = id => S.favs.has(id);
+  if (S.targetId) { $("cardFav").textContent = on(S.targetId) ? "★" : "☆"; $("cardFav").setAttribute("aria-pressed", on(S.targetId)); $("cardFav").setAttribute("aria-label", on(S.targetId) ? "Remove from favorites" : "Add to favorites"); }
+  if (S.detailsId) { $("detFav").textContent = on(S.detailsId) ? "★ Favorite" : "☆ Add to favorites"; $("detFav").setAttribute("aria-pressed", on(S.detailsId)); }
+}
 function sheetH() { document.documentElement.style.setProperty("--sheet-h", $("sheet").offsetHeight + "px"); }
 
 // --- tonight: when it's dark, the clouds, the Moon and the best passes ---
@@ -1621,11 +1714,13 @@ function tonightPasses(win) {
   }
   // brightest ten, with at most four Starlink entries so the rest of the sky gets a look in
   let starlinks = 0;
-  return out.sort((a, b) => a.mag - b.mag)
+  const best = out.slice().sort((a, b) => a.mag - b.mag)
     .filter(p => !/^STARLINK/.test(p.sat.nameU) || ++starlinks <= 4)
-    .slice(0, 10).sort((a, b) => a.start - b.start);
+    .slice(0, 10);
+  for (const p of out) if (isFav(p.sat) && !best.includes(p)) best.push(p);   // favourites always make the list
+  return best.sort((a, b) => a.start - b.start);
 }
-const passTitle = p => p.count > 1 ? `Starlink train · ${p.count} satellites` : p.sat.name;
+const passTitle = p => p.count > 1 ? `Starlink train · ${p.count} satellites` : favName(p.sat);
 
 function renderTonight(box) {
   $("sheetTitle").textContent = "Tonight";
@@ -1665,7 +1760,7 @@ function renderTonight(box) {
     : !list.length ? `<div class="empty">No bright passes in the dark hours tonight. Check the Passes tab for fainter ones.</div>`
     : list.map((p, i) => {
         const cc = cloudAt(p.maxTime), mins = Math.max(1, Math.round((p.end - p.start) / 60000));
-        const sub = `${compassName(p.startAz)} → ${compassName(p.endAz)} · highest ${p.maxEl.toFixed(0)}° in the ${compassName(p.maxAz)} · ${magText(p.mag)}, ${brightWord(p.mag)}` +
+        const sub = `${compassName(p.startAz)} → ${compassName(p.endAz)} · highest ${p.maxEl.toFixed(0)}° in the ${compassName(p.maxAz)} · ${magText(p.mag)}, ${brightWord(p.mag, p.limit)}` +
           (p.count > 1 ? ` · launch ${p.launch}` : "") + (cc != null && cc >= 60 ? ` · ${cc}% cloud` : "");
         return `<div class="pass">
           <button class="row lit ${p.sat.id === S.targetId ? "sel" : ""}" data-id="${p.sat.id}" data-pass="tonight:${i}"><span class="dot"></span>
@@ -1677,6 +1772,7 @@ function renderTonight(box) {
   box.innerHTML = `<div class="tonight">
       <div class="tn-line"><span class="tn-k">Dark</span><span>${win.darkNow ? "Now" : fmtDayTime(win.start)} until ${fmtTime(win.end)}</span></div>
       ${cloudHtml}
+      <div class="tn-line"><span class="tn-k">Seeing</span><span>${win.darkNow ? "Now" : `From ${fmtTime(win.start + 3600e3)}`} ${seeingText(conditionsAt(win.darkNow ? Date.now() : win.start + 3600e3))}</span></div>
       <div class="tn-line"><span class="tn-k">Moon</span><span>${lit != null ? `${lit}% lit, ` : ""}${moonWhen}${moonNote}</span></div>
     </div>
     <h4 class="tn-h">Best passes</h4>${passHtml}`;
@@ -1688,7 +1784,7 @@ const icsText = s => String(s).replace(/[\\;,]/g, m => "\\" + m).replace(/\n/g, 
 const icsFold = line => line.length <= 73 ? line : line.match(/.{1,73}/g).join("\r\n ");
 function addToCalendar(p) {
   const title = p.count > 1 ? `Starlink train (${p.count} satellites)` : `${p.sat.name} pass`;
-  const desc = `Rises in the ${compassName(p.startAz)} at ${fmtTime(p.start)}, highest (${p.maxEl.toFixed(0)}°) in the ${compassName(p.maxAz)} at ${fmtTime(p.maxTime)}, gone in the ${compassName(p.endAz)} by ${fmtTime(p.end)}. Brightness about magnitude ${p.mag.toFixed(1)} (${brightWord(p.mag)}).`;
+  const desc = `Rises in the ${compassName(p.startAz)} at ${fmtTime(p.start)}, highest (${p.maxEl.toFixed(0)}°) in the ${compassName(p.maxAz)} at ${fmtTime(p.maxTime)}, gone in the ${compassName(p.endAz)} by ${fmtTime(p.end)}. Brightness about magnitude ${p.mag.toFixed(1)} (${brightWord(p.mag, p.limit)}).`;
   const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Overhead//Satellite pass//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "BEGIN:VEVENT",
     `UID:${p.sat.id}-${p.start}@overhead`, `DTSTAMP:${icsTime(Date.now())}`, `DTSTART:${icsTime(p.start - 60e3)}`, `DTEND:${icsTime(p.end + 60e3)}`,
     `SUMMARY:${icsText(title)}`, `DESCRIPTION:${icsText(desc)}`, S.loc?.name ? `LOCATION:${icsText(S.loc.name)}` : "",
@@ -1711,6 +1807,7 @@ function openDetails(id) {
   S.detailsId = id;
   $("details").hidden = false; $("details").scrollTop = 0;
   $("detName").textContent = sat.name;
+  updateFavButtons();
   const d = intlDesig(sat.l1);
   $("detChips").innerHTML = [`<span class="chip k">${esc(CAT_LABEL[sat.cat])}</span>`, `<span class="chip">NORAD ${fromAlpha5(sat.id)}</span>`, d ? `<span class="chip">${esc(d.code)}</span>` : ""].join("");
   renderOrbit(sat); renderNow(sat); renderAbout(sat, catMem.has(id) ? null : "loading");
@@ -1840,7 +1937,7 @@ function pointing() { const R = S.R; return ALIGN.edge ? [R[1], R[4], R[7]] : [-
 function alignCandidates() {
   const p = pointing(), list = [];
   for (const o of [sky.moon, ...sky.planets, ...sky.stars]) {
-    if (!o || o.el < 3 || (o.kind === "planet" && o.mag > 2.5) || (o.kind === "star" && o.mag > 2.1)) continue;
+    if (!o || o.el < 3 || (o.kind === "planet" && o.mag > 2.5) || (o.kind === "star" && (o.mag > 2.5 || !o.name))) continue;
     const d = Math.acos(Math.max(-1, Math.min(1, p[0] * o.v[0] + p[1] * o.v[1] + p[2] * o.v[2]))) * R2D;
     if (d < 45) list.push({ o, d });
   }
@@ -1926,7 +2023,7 @@ const headingOf = (a, b) => compassName((Math.atan2(b[0] - a[0], b[1] - a[1]) * 
 function applyLookback(m) {
   if (m.job !== IDENT.job || !IDENT.on) return;
   IDENT.hits = m.hits.map(h => ({ ...h, sat: S.sats[h.idx] })).filter(h => h.sat);
-  const seeable = h => h.lit && h.mag < S.limit;
+  const seeable = h => h.lit && h.mag < limitNow();
   const row = (h, i) => `<button class="row ${seeable(h) ? "lit" : ""}" data-i="${i}"><span class="dot"></span>
       <span class="nm">${esc(h.sat.name)}<span class="sub tn-wrap">${agoText(h.t)} · ${h.deg.toFixed(0)}° from your aim · heading ${headingOf(h.from, h.to)}</span></span>
       <span class="num">${h.lit ? magText(h.mag) : "in shadow"}<span class="sub">${h.lit ? brightWord(h.mag).split(",")[0] : "not visible"}</span></span></button>`;
@@ -2051,7 +2148,9 @@ $("timeClose").addEventListener("click", closeTimeBar);
 // --- your sky: how faint you can see ---
 function renderSkySetting() {
   $("skyIn").innerHTML = SKY_LIMITS.map(([v, name]) => `<button role="radio" aria-checked="${v === S.limit}" data-v="${v}">${name}</button>`).join("");
-  $("skyNote").textContent = `Satellites down to magnitude ${S.limit} count as visible. Under a bright Moon or near streetlights you'll see less; from a dark site, more.`;
+  const now = S.loc ? conditionsAt(Date.now()) : null;
+  $("skyNote").textContent = `On a dark, moonless night you see down to magnitude ${S.limit}. Twilight and moonlight lower that, and the app allows for both` +
+    (now && now.sunEl < -6 ? `: right now ${seeingText(now)}.` : ".");
 }
 $("skyIn").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
@@ -2059,6 +2158,40 @@ $("skyIn").addEventListener("click", e => {
   S.passesAt = 0;   // which passes count as visible changes too
   renderSkySetting(); renderSheet(); updateStatus(); updateCard();
 });
+
+// --- quick guide: six short steps, each pointing at the button it explains ---
+const GUIDE = [
+  { title: "Point your phone at the sky", spot: [],
+    text: "Hold your phone up like a window onto the sky. The satellites in that direction appear on screen. Gold dots are lit by the sun, and the bigger the dot, the brighter it looks. Blue dots are in Earth's shadow, so you can't see them." },
+  { title: "Line up the compass", spot: ["alignBtn"],
+    text: "Phone compasses are often a few degrees off. Tap ◎, center a bright star, planet or the Moon in the camera picture, and tap its name. Everything then lines up with the real sky." },
+  { title: "Tap a satellite", spot: [],
+    text: "Tap a dot to see where to look and what it is. Tap the card for who runs it, when it launched and its orbit, and tap ☆ to make it a favorite. Favorites are always labelled." },
+  { title: "Plan your night", spot: ["tabTonight"],
+    text: "Tonight shows when it gets dark, the clouds, the Moon and the best passes. Tap a pass to follow it: you get its path across the sky, a countdown, and a buzz when it rises." },
+  { title: "Saw something move?", spot: ["grab"],
+    text: "Open the list and tap “Saw something moving?”. Point where you saw it, and the app finds out which satellite it was." },
+  { title: "A few more buttons", spot: ["timeBtn", "redBtn", "setBtn"],
+    text: "◷ shows the sky up to 12 hours ahead. R turns the screen red so your eyes stay used to the dark. ⚙ has your location, how dark your sky is, and this guide." },
+];
+let guideAt = 0;
+function showGuideStep() {
+  document.querySelectorAll(".spot").forEach(el => el.classList.remove("spot"));
+  const g = GUIDE[guideAt];
+  $("guideStep").textContent = `${guideAt + 1} OF ${GUIDE.length}`;
+  $("guideTitle").textContent = g.title;
+  $("guideText").textContent = g.text;
+  $("guideNext").textContent = guideAt === GUIDE.length - 1 ? "Done" : "Next";
+  g.spot.forEach(id => $(id).classList.add("spot"));
+}
+function openGuide() { guideAt = 0; $("guide").hidden = false; showGuideStep(); $("guideNext").focus(); }
+function closeGuide() {
+  document.querySelectorAll(".spot").forEach(el => el.classList.remove("spot"));
+  $("guide").hidden = true; store.set("guideSeen", true);
+}
+$("guideNext").addEventListener("click", () => { if (++guideAt >= GUIDE.length) closeGuide(); else showGuideStep(); });
+$("guideSkip").addEventListener("click", closeGuide);
+$("guideBtn").addEventListener("click", () => { $("settings").hidden = true; openGuide(); });
 
 // --- settings ---
 function updateLocNow() {
@@ -2155,6 +2288,7 @@ async function begin(mode) {
     catch (e) { if (!S.loc) { openSettings(); showHint(e.message, 6000); } }
   }
   renderSheet(); updateCard();
+  if (!store.get("guideSeen", false)) openGuide();
 }
 $("startBtn").addEventListener("click", () => begin("sensor"));
 $("dragBtn").addEventListener("click", () => begin("drag"));

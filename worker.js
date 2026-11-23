@@ -19,7 +19,25 @@ function sunPos(date) {
   const lam = L + (1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * D2R;
   const eps = (23.439 - 0.0000004 * n) * D2R;
   const v = { x: Math.cos(lam), y: Math.cos(eps) * Math.sin(lam), z: Math.sin(eps) * Math.sin(lam) };
-  return { v, ra: Math.atan2(v.y, v.x), dec: Math.asin(v.z) };
+  return { v, lam, ra: Math.atan2(v.y, v.x), dec: Math.asin(v.z) };
+}
+// The Moon's height above the horizon and lit fraction (low-precision series, as in the page).
+function moonAt(date, gmst, sun) {
+  const T = (date.getTime() / 86400000 + 2440587.5 - 2451545) / 36525, s = d => Math.sin(d * D2R);
+  const mLon = (218.32 + 481267.881 * T + 6.29 * s(135.0 + 477198.87 * T) - 1.27 * s(259.3 - 413335.36 * T)
+    + 0.66 * s(235.7 + 890534.22 * T) + 0.21 * s(269.9 + 954397.74 * T) - 0.19 * s(357.5 + 35999.05 * T) - 0.11 * s(186.5 + 966404.03 * T)) * D2R;
+  const mLat = (5.13 * s(93.3 + 483202.02 * T) + 0.28 * s(228.2 + 960400.89 * T) - 0.28 * s(318.3 + 6003.15 * T) - 0.17 * s(217.6 - 407332.21 * T)) * D2R;
+  const eps = (23.439 - 0.013 * T) * D2R, x = Math.cos(mLat) * Math.cos(mLon), y = Math.cos(mLat) * Math.sin(mLon), z = Math.sin(mLat);
+  const ra = Math.atan2(y * Math.cos(eps) - z * Math.sin(eps), x), dec = Math.asin(y * Math.sin(eps) + z * Math.cos(eps));
+  const ha = gmst + lon - ra;   // lon, lat: the observer
+  const el = Math.asin(Math.sin(dec) * Math.sin(lat) + Math.cos(dec) * Math.cos(lat) * Math.cos(ha)) * R2D;
+  return { el, lit: (1 - Math.cos(mLat) * Math.cos(mLon - sun.lam)) / 2 };
+}
+// Faintest magnitude visible: the viewer's sky, less twilight and moonlight (same rule as the page).
+function skyLimit(base, sunElDeg, moon) {
+  const twilight = Math.pow(Math.min(1, Math.max(0, (sunElDeg + 18) / 12)), 1.5) * 3.5;
+  const ml = moon.el > 0 ? Math.pow(moon.lit, 1.5) * Math.max(0, base - 3) * 0.5 * Math.min(1, moon.el / 20) : 0;
+  return base - twilight - ml;
 }
 function sunEl(sun, gmst) {
   const ha = gmst + lon - sun.ra;
@@ -95,7 +113,8 @@ async function passes(m) {
   const ts = [];
   for (let s = 0; s <= steps; s++) {
     const date = new Date(m.t + s * step), gmst = satellite.gstime(date), sun = sunPos(date);
-    ts.push({ date, gmst, sunV: sun.v, obs: observerEci(gmst), dark: sunEl(sun, gmst) < -6 });
+    const se = sunEl(sun, gmst);
+    ts.push({ date, gmst, sunV: sun.v, obs: observerEci(gmst), dark: se < -6, limit: se < -6 ? skyLimit(m.limit || 6, se, moonAt(date, gmst, sun)) : -99 });
   }
   const list = [];
   for (let k = 0; k < m.indices.length; k++) {
@@ -108,7 +127,10 @@ async function passes(m) {
       if (l.el > 0) {
         if (!cur) cur = { idx: i, start: +t.date, startAz: l.az, maxEl: -90, visible: false, mag: 99 };
         if (l.el > cur.maxEl) { cur.maxEl = l.el; cur.maxTime = +t.date; cur.maxAz = l.az; }
-        if (l.el > 10 && l.lit && t.dark) { cur.mag = Math.min(cur.mag, l.mag); if (l.mag < (m.limit || 6)) cur.visible = true; }
+        if (l.el > 10 && l.lit && t.dark) {
+          if (l.mag < cur.mag) { cur.mag = l.mag; cur.limit = t.limit; }
+          if (l.mag < t.limit) cur.visible = true;
+        }
         cur.end = +t.date; cur.endAz = l.az;
       } else if (cur) { if (cur.maxEl >= 15) list.push(cur); cur = null; }
     }
