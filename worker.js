@@ -1,6 +1,8 @@
 // Background thread: propagates every satellite so the sky view stays smooth on a phone.
-// Messages in:  reset | add {list:[[l1,l2,stdMag],...]} | obs {lat,lon,h} | tick {t, gen} | passes {t, hours, indices, job}
+// Messages in:  reset | add {list:[[l1,l2,stdMag],...]} | obs {lat,lon,h} | tick {t, gen}
+//               passes {t, hours, indices, limit, job} | lookback {t0, t1, step, dir, radius, job}
 // Messages out: pos {t, gen, data: Float64Array [idx, az, el, rangeKm, lit, mag, az+1s, el+1s] ...} | passes {job, list}
+//               lookback {job, hits: [{idx, t, deg, lit, mag, from, to}]}
 // The page normally starts this worker with the orbit library already bundled in front of it,
 // which also works offline; loaded on its own, it fetches the library itself.
 if (typeof satellite === "undefined") importScripts("lib/satellite.min.js");
@@ -106,7 +108,7 @@ async function passes(m) {
       if (l.el > 0) {
         if (!cur) cur = { idx: i, start: +t.date, startAz: l.az, maxEl: -90, visible: false, mag: 99 };
         if (l.el > cur.maxEl) { cur.maxEl = l.el; cur.maxTime = +t.date; cur.maxAz = l.az; }
-        if (l.el > 10 && l.lit && t.dark) { cur.mag = Math.min(cur.mag, l.mag); if (l.mag < 6) cur.visible = true; }
+        if (l.el > 10 && l.lit && t.dark) { cur.mag = Math.min(cur.mag, l.mag); if (l.mag < (m.limit || 6)) cur.visible = true; }
         cur.end = +t.date; cur.endAz = l.az;
       } else if (cur) { if (cur.maxEl >= 15) list.push(cur); cur = null; }
     }
@@ -115,6 +117,50 @@ async function passes(m) {
     if (k % 10 === 9) { await new Promise(r => setTimeout(r, 0)); if (job !== passJob) return; }
   }
   postMessage({ type: "passes", job, list });
+}
+
+// "What was that?": which satellites crossed a direction on the sky (dir, unit east/north/up vector)
+// within `radius` degrees between t0 and t1. Each satellite's path is checked every `step` ms, with the
+// closest approach found along each step, so fast movers between samples aren't missed.
+function lookback(m) {
+  const cosR = Math.cos(m.radius * D2R), [px, py, pz] = m.dir, ts = [];
+  for (let t = m.t0; t <= m.t1; t += m.step) {
+    const d = new Date(t), g = satellite.gstime(d), s = sunPos(d);
+    ts.push({ t, d, g, sunV: s.v, obs: satellite.ecfToEci(satellite.geodeticToEcf(gd), g) });
+  }
+  const hits = [];
+  for (let i = 0; i < recs.length; i++) {
+    if (!recs[i]) continue;
+    let prev = null, best = null;
+    for (const T of ts) {
+      const pv = satellite.propagate(recs[i], T.d);
+      if (!pv || !pv.position) { prev = null; continue; }
+      const la = satellite.ecfToLookAngles(gd, satellite.eciToEcf(pv.position, T.g));
+      const ce = Math.cos(la.elevation), v = [Math.sin(la.azimuth) * ce, Math.cos(la.azimuth) * ce, Math.sin(la.elevation)];
+      const cur = { T, v, pv, range: la.rangeSat, el: la.elevation * R2D };
+      if (prev) {
+        // closest point to dir on the short chord prev -> cur
+        const dx = v[0] - prev.v[0], dy = v[1] - prev.v[1], dz = v[2] - prev.v[2], L2 = dx * dx + dy * dy + dz * dz;
+        const f = L2 > 0 ? Math.max(0, Math.min(1, ((px - prev.v[0]) * dx + (py - prev.v[1]) * dy + (pz - prev.v[2]) * dz) / L2)) : 0;
+        const q = [prev.v[0] + f * dx, prev.v[1] + f * dy, prev.v[2] + f * dz], qn = Math.hypot(...q);
+        const c = (q[0] * px + q[1] * py + q[2] * pz) / qn;
+        if (c > cosR && q[2] > 0 && (!best || c > best.c)) best = { c, f, a: prev, b: cur };
+      }
+      prev = cur;
+    }
+    if (!best) continue;
+    const near = best.f < 0.5 ? best.a : best.b;   // the nearer sample for sunlight and brightness
+    const lit = !inShadow(near.pv.position, near.T.sunV);
+    hits.push({ idx: i, t: best.a.T.t + best.f * (best.b.T.t - best.a.T.t), deg: Math.acos(Math.min(1, best.c)) * R2D, lit,
+                mag: lit ? magnitude(mags[i], near.pv.position, near.T.sunV, near.T.obs, near.range, near.el) : 99,
+                from: best.a.v, to: best.b.v });
+  }
+  // What someone most likely noticed: sunlit and bright first, then close to where they point
+  // (4 degrees off counts about as much as one magnitude fainter), then recent (10 minutes ago
+  // counts as one magnitude), since people usually ask right after seeing it.
+  const score = h => h.lit ? h.mag + h.deg / 4 + (m.t1 - h.t) / 600e3 : 100 + h.deg;
+  hits.sort((a, b) => score(a) - score(b));
+  postMessage({ type: "lookback", job: m.job, hits: hits.slice(0, 40) });
 }
 
 onmessage = e => {
@@ -136,5 +182,6 @@ onmessage = e => {
       break;
     case "tick": tick(m.t, m.gen); break;
     case "passes": passes(m); break;
+    case "lookback": lookback(m); break;
   }
 };
