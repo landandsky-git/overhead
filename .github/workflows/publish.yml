@@ -2,6 +2,7 @@
 # Phones then download the lists from this site instead of CelesTrak, which only allows each
 # internet connection one download of a list every 2 hours.
 # Runs on every push, every 4 hours, and on demand (Actions tab -> Run workflow).
+# The automatic checks run first; the site is only published if they all pass.
 # Requires Settings -> Pages -> Source: "GitHub Actions".
 name: Publish app and satellite data
 
@@ -22,22 +23,32 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Checks the astronomy and data handling against reference values (tests/checks.js).
+  # If any check fails, nothing is published.
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run the automatic checks
+        run: node tests/run-node.js
+
   publish:
+    needs: checks
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - id: pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Collect the app files
         run: |
           mkdir -p site/data
           cp index.html worker.js codes.js sky-data.js model3d.js sw.js manifest.webmanifest icon.svg icon-180.png icon-512.png tle-fallback.txt site/
-          cp -r lib site/
+          cp -r lib js css site/
 
       # CSV rather than the classic two-line text, which leaves out satellites numbered above 99999.
       - name: Download satellite lists (keep the last good copy if CelesTrak says no)
@@ -76,9 +87,9 @@ jobs:
             catch { Write-Host "No published brightness table yet; the app will use its built-in estimates" }
           }
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

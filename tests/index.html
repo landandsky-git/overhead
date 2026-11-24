@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Overhead checks</title>
+<style>
+  body { background: #05070d; color: #c9d3e6; font: 14px/1.5 ui-monospace, Menlo, Consolas, monospace; margin: 0; padding: 16px; }
+  h1 { font: 600 16px system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+  .pass { color: #7af0c8; } .fail { color: #ff8a7a; } .detail { color: #6c7a96; }
+</style>
+</head>
+<body>
+<h1>Overhead: automatic checks</h1>
+<div id="out">Running…</div>
+<script src="../lib/satellite.min.js"></script>
+<script src="../codes.js"></script>
+<script src="../sky-data.js"></script>
+<script src="../js/state.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/astro.js"></script>
+<script src="checks.js"></script>
+<script>
+  const results = runChecks(), failed = results.filter(r => !r.ok).length;
+  document.getElementById("out").innerHTML = results.map(r =>
+    `<div class="${r.ok ? "pass" : "fail"}">${r.ok ? "PASS" : "FAIL"} ${r.name} <span class="detail">${r.detail}</span></div>`).join("") +
+    `<p class="${failed ? "fail" : "pass"}">${results.length - failed} passed, ${failed} failed</p>`;
+</script>
+</body>
+</html>

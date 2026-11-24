@@ -4,8 +4,9 @@
 //  - Fonts: the saved copy first.
 //  - Satellite data (data/*), CelesTrak and lookups: left to the page, which keeps its own copies.
 // Bump VERSION when the list of app files changes.
-const VERSION = "overhead-v3";
-const APP = ["./", "index.html", "worker.js", "codes.js", "sky-data.js", "model3d.js", "lib/satellite.min.js", "manifest.webmanifest",
+const VERSION = "overhead-v4";
+const APP = ["./", "index.html", "css/app.css", "js/state.js", "js/data.js", "js/positions.js", "js/astro.js", "js/sensors.js", "js/sky.js", "js/format.js", "js/card.js", "js/lists.js", "js/details.js", "js/tools.js", "js/settings.js", "js/main.js",
+  "worker.js", "codes.js", "sky-data.js", "model3d.js", "lib/satellite.min.js", "manifest.webmanifest",
   "icon.svg", "icon-180.png", "icon-512.png", "tle-fallback.txt"];
 
 self.addEventListener("install", e => {
