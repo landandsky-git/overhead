@@ -36,7 +36,7 @@ jobs:
       - name: Collect the app files
         run: |
           mkdir -p site/data
-          cp index.html worker.js codes.js sky-data.js sw.js manifest.webmanifest icon.svg icon-180.png icon-512.png tle-fallback.txt site/
+          cp index.html worker.js codes.js sky-data.js model3d.js sw.js manifest.webmanifest icon.svg icon-180.png icon-512.png tle-fallback.txt site/
           cp -r lib site/
 
       # CSV rather than the classic two-line text, which leaves out satellites numbered above 99999.

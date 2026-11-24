@@ -63,6 +63,7 @@ button:focus-visible, input:focus-visible, .card:focus-visible { outline: 2px so
 .iconbtn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 80%, transparent); display: grid; place-items: center; font: 600 11px var(--font-data); flex: none; }
 .iconbtn[aria-pressed="true"] { border-color: #a33; color: #f66; }
 
+.zoompill { position: fixed; left: 50%; top: 50%; transform: translate(-50%, 46px); font: 11px var(--font-data); color: var(--target); border: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 80%, transparent); border-radius: 999px; padding: 4px 10px; }
 .readout { position: fixed; left: 50%; top: 50%; transform: translate(-50%, 26px); font: 12px var(--font-data); color: var(--dim); text-align: center; pointer-events: none; font-variant-numeric: tabular-nums; }
 .hint { position: fixed; left: 16px; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 84px); text-align: center; font: 12px var(--font-body); color: var(--lit); pointer-events: none; }
 .notice { position: fixed; left: 16px; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 52px); text-align: center; font: 12px var(--font-body); color: var(--dim); pointer-events: none; text-wrap: balance; }
@@ -145,6 +146,7 @@ details .secondary { margin-top: 10px; width: 100%; }
 input[type=range] { width: 100%; accent-color: var(--lit); }
 
 .det h2 { margin: 0; font: 600 24px/1.15 var(--font-display); letter-spacing: .05em; overflow-wrap: anywhere; }
+.model3d { width: 100%; height: 260px; display: block; border-radius: 10px; background: radial-gradient(circle at 50% 40%, var(--panel-2), var(--sky)); touch-action: none; cursor: grab; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { font: 11px var(--font-data); padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); }
 .chip.k { color: var(--ink); }
@@ -204,6 +206,7 @@ button.passrow { width: 100%; text-align: left; }
 <div class="notice" id="notice" hidden></div>
 <div class="hint" id="hint" hidden></div>
 <div class="readout" id="readout"></div>
+<button class="zoompill" id="zoomPill" hidden></button>
 
 <div class="card" id="card" role="button" tabindex="0" aria-label="Show satellite details" hidden>
   <div class="card-top"><h3 id="cardName"></h3><button class="favbtn" id="cardFav" aria-pressed="false" aria-label="Favorite">☆</button><button id="cardClose">Clear</button></div>
@@ -349,6 +352,9 @@ button.passrow { width: 100%; text-align: left; }
     <div class="panel-head"><button class="linkbtn" id="detBack">‹ Back to sky</button><button class="linkbtn" id="detFav" aria-pressed="false">☆ Add to favorites</button></div>
     <h2 id="detName"></h2>
     <div class="chips" id="detChips"></div>
+    <section class="group"><h3>What it looks like</h3>
+      <canvas class="model3d" id="model3d" aria-label="3D model of the satellite. Drag to turn it."></canvas>
+      <p class="small" id="modelNote"></p></section>
     <section class="group"><h3 id="detNowH">Right now</h3><dl id="detNow"></dl></section>
     <section class="group"><h3>About</h3><dl id="detAbout"></dl></section>
     <section class="group"><h3>Orbit</h3><dl id="detOrbit"></dl></section>
@@ -360,6 +366,7 @@ button.passrow { width: 100%; text-align: left; }
 <script src="lib/satellite.min.js"></script>
 <script src="codes.js"></script>
 <script src="sky-data.js"></script>
+<script src="model3d.js"></script>
 <script>
 "use strict";
 const D2R = Math.PI / 180, R2D = 180 / Math.PI;
@@ -1241,18 +1248,19 @@ function draw() {
   }
   ctx.font = `600 9px ${FONT_D}`; ctx.fillStyle = C.line; ctx.textAlign = "center";
   for (const n of sky.names) {
-    if (n.rank > 2 || n.el < 3) continue;
+    if (n.rank > (S.vfov < 45 ? 3 : 2) || n.el < 3) continue;
     const q = P(n.v); if (q.front) ctx.fillText(n.name.toUpperCase(), q.x, q.y);
   }
   // stars: anything fainter than what your sky shows right now is drawn faintly
   const seeLimit = limitNow();
+  const nameMag = Math.min(4, 1.3 + 2 * Math.log2(VFOV.normal / S.vfov));   // zoomed in: name fainter stars too
   ctx.font = `10px ${FONT_M}`; ctx.textAlign = "left";
   for (const s of sky.stars) {
     if (s.el < -1) continue;
     const q = P(s.v); if (!q.front) continue;
     ctx.fillStyle = C.star; ctx.globalAlpha = s.mag > seeLimit ? 0.22 : magAlpha(s.mag);
     ctx.beginPath(); ctx.arc(q.x, q.y, magRadius(s.mag), 0, 7); ctx.fill(); ctx.globalAlpha = 1;
-    if (s.mag < 1.3) { ctx.fillStyle = C.dim; ctx.fillText(s.name, q.x + 5, q.y + 8); }
+    if (s.mag < nameMag && s.name) { ctx.fillStyle = C.dim; ctx.fillText(s.name, q.x + 5, q.y + 8); }
   }
 
   // planets, always labelled: they are the brightest points in the sky and easy to mistake for satellites
@@ -1298,11 +1306,18 @@ function draw() {
   const nowMs = simNow();
   for (const e of S.now) {
     if (e.el < 0) continue;
-    const isT = (tgtSat && e.sat === tgtSat) || S.favs.has(e.sat.id);
-    if (!isT && (!S.show[e.sat.cat] || (S.eyeOnly && !(e.lit && e.mag <= seeLimit)))) continue;
+    // Favourites show even when their group is switched off, but like everything else they follow
+    // "only show satellites bright enough to see". The selected satellite always stays on screen;
+    // if the filter would hide it, it's drawn as a hollow ring instead of a dot.
+    const isT = tgtSat && e.sat === tgtSat;
+    const seeable = !S.eyeOnly || (e.lit && e.mag <= seeLimit);
+    if (!isT && (!(S.show[e.sat.cat] || S.favs.has(e.sat.id)) || !seeable)) continue;
     const q = P(vNow(e, nowMs));
     if (!q.front || q.x < -20 || q.x > W + 20 || q.y < -20 || q.y > H + 20) continue;
-    if (e.lit) {
+    e.faint = !seeable;
+    if (e.faint) {
+      ctx.strokeStyle = C.target; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(q.x, q.y, 3, 0, 6.2832); ctx.stroke();
+    } else if (e.lit) {
       const r = magRadius(e.mag);
       bins[magStep(e.mag)].moveTo(q.x + r, q.y); bins[magStep(e.mag)].arc(q.x, q.y, r, 0, 6.2832);
       litDrawn.push(e);
@@ -1331,7 +1346,7 @@ function draw() {
   const boxes = [[cx - 75, cy + 14, 150, 26]];
   const label = (e, color, force) => {
     if (labeled.has(e.sat.idx)) return;
-    const text = favName(e.sat), w = ctx.measureText(text).width, b = [e.qx + 6, e.qy - 17, w + 2, 14];
+    const text = favName(e.sat) + (e.faint ? " (too faint)" : ""), w = ctx.measureText(text).width, b = [e.qx + 6, e.qy - 17, w + 2, 14];
     if (!force && boxes.some(o => b[0] < o[0] + o[2] && o[0] < b[0] + b[2] && b[1] < o[1] + o[3] && o[1] < b[1] + b[3])) return;
     boxes.push(b); labeled.add(e.sat.idx); ctx.fillStyle = color; ctx.fillText(text, e.qx + 7, e.qy - 6);
   };
@@ -1810,12 +1825,16 @@ function openDetails(id) {
   updateFavButtons();
   const d = intlDesig(sat.l1);
   $("detChips").innerHTML = [`<span class="chip k">${esc(CAT_LABEL[sat.cat])}</span>`, `<span class="chip">NORAD ${fromAlpha5(sat.id)}</span>`, d ? `<span class="chip">${esc(d.code)}</span>` : ""].join("");
+  const o = orbitInfo(sat), model = window.Model3D?.open($("model3d"), { name: sat.nameU, orbit: o && o.short });
+  $("modelNote").textContent = !model ? "" : model.placeholder
+    ? "There's no 3D model for this kind of satellite yet, so this is a placeholder cube."
+    : `Simplified model: ${model.title}. ${model.size}. Drag to turn it.`;
   renderOrbit(sat); renderNow(sat); renderAbout(sat, catMem.has(id) ? null : "loading");
   catalog(sat).then(() => { if (S.detailsId === id) renderAbout(sat); }).catch(() => { if (S.detailsId === id) renderAbout(sat, "offline"); });
   $("detPasses").innerHTML = `<p class="small">Working out passes…</p>`;
   setTimeout(() => { if (S.detailsId === id) renderDetailPasses(sat); }, 30);
 }
-function closeDetails() { S.detailsId = null; $("details").hidden = true; }
+function closeDetails() { S.detailsId = null; $("details").hidden = true; window.Model3D?.stop(); }
 $("detBack").addEventListener("click", closeDetails);
 
 function renderNow(sat) {
@@ -1900,15 +1919,42 @@ cv.addEventListener("click", e => {
   const sat = S.sats[best];
   if (sat.id === S.targetId) openDetails(sat.id); else setTarget(sat.id);
 });
-cv.addEventListener("pointerdown", e => { drag = { x: e.clientX, y: e.clientY, az: S.view.az, el: S.view.el }; dragMoved = false; });
+// Zoom: mouse wheel, or two fingers pinching. Field of view from 110° (wide) to 8° (zoomed in).
+const VFOV = { min: 8, max: 110, normal: 70 };
+function setZoom(vfov) {
+  S.vfov = Math.max(VFOV.min, Math.min(VFOV.max, vfov));
+  if (Math.abs(S.vfov - VFOV.normal) < 2) S.vfov = VFOV.normal;   // snap back to normal
+  const pill = $("zoomPill"), x = VFOV.normal / S.vfov;
+  pill.hidden = S.vfov === VFOV.normal;
+  pill.textContent = `${x >= 1 ? "×" + x.toFixed(1) : "wide"} · reset`;
+}
+cv.addEventListener("wheel", e => { e.preventDefault(); setZoom(S.vfov * Math.exp(e.deltaY * 0.0015)); }, { passive: false });
+$("zoomPill").addEventListener("click", () => setZoom(VFOV.normal));
+
+const fingers = new Map();   // pointerId -> {x, y}
+let pinch = null;            // {d0, v0}: finger spread and zoom when the pinch began
+const spread = () => { const [a, b] = [...fingers.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+cv.addEventListener("pointerdown", e => {
+  fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (fingers.size === 2) { pinch = { d0: spread(), v0: S.vfov }; drag = null; dragMoved = true; return; }
+  drag = { x: e.clientX, y: e.clientY, az: S.view.az, el: S.view.el }; dragMoved = false;
+});
 addEventListener("pointermove", e => {
+  if (fingers.has(e.pointerId)) fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && fingers.size >= 2) { setZoom(pinch.v0 * pinch.d0 / spread()); return; }
   if (!drag || S.mode !== "drag") return;
   const k = S.vfov / H, dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   if (Math.abs(dx) + Math.abs(dy) > 4) dragMoved = true;
   S.view.az = (drag.az - dx * k + 360) % 360;
   S.view.el = Math.max(-10, Math.min(90, drag.el + dy * k));
 });
-addEventListener("pointerup", () => { drag = null; setTimeout(() => dragMoved = false, 0); });
+const fingerUp = e => {
+  fingers.delete(e.pointerId);
+  if (fingers.size < 2) pinch = null;
+  if (!fingers.size) { drag = null; setTimeout(() => dragMoved = false, 0); }
+};
+addEventListener("pointerup", fingerUp);
+addEventListener("pointercancel", fingerUp);
 
 $("redBtn").addEventListener("click", () => {
   const on = !document.body.classList.contains("red");
