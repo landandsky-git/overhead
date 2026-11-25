@@ -118,7 +118,7 @@ async function loadSats(force) {
   worker.postMessage({ type: "reset" });
   S.sats = []; S.byId = new Map(); S.counts = { bright: 0, starlink: 0, other: 0 }; S.trains = new Map();
   S.now = []; S.nowMap = new Map(); S.passes = null; S.passesAt = 0; paths.clear();
-  S.loading = "Loading satellites…"; updateStatus();
+  S.loading = tl("Loading satellites…", "Satelliten werden geladen…"); S.busy = true; updateStatus();
   S.mags = await getMags(force);
   if (job !== loadJob) return;
   const times = [];
@@ -137,18 +137,21 @@ async function loadSats(force) {
 // Starlink and every other active satellite: one big list, added after the bright ones.
 async function loadActive(force) {
   const job = loadJob;
-  S.loading = "Loading Starlink and other satellites…"; updateStatus(); renderSheet(); updateCard();
+  S.loading = tl("Loading Starlink and other satellites…", "Starlink und weitere Satelliten werden geladen…"); S.busy = true; updateStatus(); renderSheet(); updateCard();
   lastRefusal = null;
   const act = await getGroup("active", force);
   if (job !== loadJob) return;
+  S.busy = false;
   if (act) { addSats(parseOrbits(act.text), null); S.times.push(act.time); S.passesAt = 0; }   // redo passes to include bright ones from this list
   S.tleTime = S.times.length ? Math.min(...S.times) : 0;
   const ageDays = act ? (Date.now() - act.time) / 86400e3 : 0;
   S.loading = !act ? (lastRefusal === "wait"
-      ? "Starlink and other satellites will load within 2 hours (CelesTrak download limit)"
-      : "Showing bright satellites only (couldn't download the full list)")
-    : act.stale && ageDays > 10 ? `No connection. The saved satellite data is ${Math.round(ageDays)} days old, so positions may be off by several degrees. Connect to update.`
-    : act.stale && Date.now() - act.time > TLE_MAX_AGE ? `No connection. Using satellite data saved ${fmtDate(new Date(act.time))}, ${fmtTime(act.time)}. It stays accurate for about a week.`
+      ? tl("Starlink and other satellites will load within 2 hours (CelesTrak download limit)", "Starlink und weitere Satelliten laden innerhalb von 2 Stunden (Download-Limit von CelesTrak)")
+      : tl("Showing bright satellites only (couldn't download the full list)", "Nur helle Satelliten (die vollständige Liste ließ sich nicht laden)"))
+    : act.stale && ageDays > 10 ? tl(`No connection. The saved satellite data is ${Math.round(ageDays)} days old, so positions may be off by several degrees. Connect to update.`,
+                                     `Keine Verbindung. Die gespeicherten Satellitendaten sind ${Math.round(ageDays)} Tage alt, die Positionen können daher um mehrere Grad abweichen. Verbinde dich zum Aktualisieren.`)
+    : act.stale && Date.now() - act.time > TLE_MAX_AGE ? tl(`No connection. Using satellite data saved ${fmtDate(new Date(act.time))}, ${fmtTime(act.time)}. It stays accurate for about a week.`,
+                                                            `Keine Verbindung. Die App nutzt die Satellitendaten vom ${fmtDate(new Date(act.time))}, ${fmtTime(act.time)} Uhr. Sie bleiben etwa eine Woche lang genau.`)
     : "";
   updateStatus(); updateTleInfo(); renderSheet(); updateCard();
 }
@@ -165,6 +168,7 @@ function addSats(list, cat) {
     const sat = { idx: S.sats.length, id, raw, name: prettyName(raw), nameU: raw.toUpperCase(), l1: t.l1, l2: t.l2, cat: c };
     [sat.m0, sat.m0src] = stdMag(sat);
     if (isFreshStarlink(sat)) { sat.trainKey = t.l1.slice(9, 14).trim(); S.trains.set(sat.trainKey, (S.trains.get(sat.trainKey) || 0) + 1); }
+    sat.m0base = sat.m0; sat.m0 += sightingCorrection(sat);   // the viewer's own sightings (sightings.js)
     S.sats.push(sat); S.byId.set(id, sat); S.counts[c]++;
     out.push([t.l1, t.l2, sat.m0]);
   }
@@ -199,10 +203,10 @@ function starlinkMag(sat) {
   return num < 1500 ? 5.1 : num < 2000 ? 6.8 : num < 5000 ? 6.0 : 7.5;
 }
 const MAG_SOURCE = {
-  measured: "Measured, from Mike McCants' satellite brightness catalog",
-  family: "From published measurements of this kind of satellite",
-  radar: "Estimated from its radar size",
-  type: "Rough estimate for this type of object",
+  measured: tl("Measured, from Mike McCants' satellite brightness catalog", "Gemessen, aus dem Helligkeitskatalog von Mike McCants"),
+  family: tl("From published measurements of this kind of satellite", "Aus veröffentlichten Messungen dieser Art von Satellit"),
+  radar: tl("Estimated from its radar size", "Geschätzt aus seiner Radargröße"),
+  type: tl("Rough estimate for this type of object", "Grobe Schätzung für diese Art von Objekt"),
 };
 
 // The brightness table published next to the app (data/mags.json, rebuilt daily by GitHub).
@@ -223,6 +227,6 @@ async function getMags(force) {
 }
 
 function prettyName(n) {
-  const fixes = { "ISS (ZARYA)": "ISS", "CSS (TIANHE)": "Tiangong (CSS)", "HST": "Hubble Space Telescope" };
+  const fixes = { "ISS (ZARYA)": "ISS", "CSS (TIANHE)": "Tiangong (CSS)", "HST": tl("Hubble Space Telescope", "Hubble-Weltraumteleskop") };
   return fixes[n] || n.replace(/\s+/g, " ");
 }

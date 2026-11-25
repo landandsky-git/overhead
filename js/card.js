@@ -5,25 +5,25 @@
 // ---------- UI ----------
 function showHint(msg, ms) { const h = $("hint"); h.textContent = msg; h.hidden = false; clearTimeout(showHint.t); showHint.t = ms ? setTimeout(() => h.hidden = true, ms) : 0; }
 
-const upTitle = () => S.timeOffset ? `Up at ${fmtTime(simNow())}` : "Up now";
+const upTitle = () => S.timeOffset ? tl(`Up at ${fmtTime(simNow())}`, `Am Himmel um ${fmtTime(simNow())}`) : tl("Up now", "Jetzt am Himmel");
 const visibleNow = () => { const L = limitNow(); return S.now.filter(e => e.el > 0 && S.show[e.sat.cat] && (!S.eyeOnly || (e.lit && e.mag <= L))); };
 
 function updateStatus() {
   const bits = [];
   if (S.timeOffset) bits.push(`◷ ${fmtTime(simNow())}`);
-  if (S.loc) bits.push(S.loc.name ? S.loc.name.split(",")[0] : fmtLatLon(S.loc.lat, S.loc.lon));
+  if (S.loc) bits.push(locName(S.loc) ? locName(S.loc).split(",")[0] : fmtLatLon(S.loc.lat, S.loc.lon));
   const up = visibleNow();
-  if (sky.sunEl < -6) { const L = limitNow(); bits.push(`${up.filter(e => e.lit && e.mag <= L).length.toLocaleString("en")} visible by eye`); }
-  bits.push(`${up.length.toLocaleString("en")} up`);
+  if (sky.sunEl < -6) { const L = limitNow(); bits.push(`${fmtN(up.filter(e => e.lit && e.mag <= L).length)} ${tl("visible by eye", "mit bloßem Auge")}`); }
+  bits.push(`${fmtN(up.length)} ${tl("up", "am Himmel")}`);
   // Loading and download-limit messages get their own line so they aren't cut off on a phone.
   const notice = $("notice");
   if (notice.textContent !== S.loading) notice.textContent = S.loading;
   notice.hidden = !S.loading || !$("intro").hidden;
-  if (S.tab === "now") $("sheetTitle").textContent = `${upTitle()} · ${visibleNow().length.toLocaleString("en")}`;
-  if (S.loc && sky.sunEl > -6) bits.push("sky still bright");
+  if (S.tab === "now") $("sheetTitle").textContent = `${upTitle()} · ${fmtN(visibleNow().length)}`;
+  if (S.loc && sky.sunEl > -6) bits.push(tl("sky still bright", "Himmel noch hell"));
   $("status").textContent = bits.join(" · ");
   const needFlat = S.mode === "sensor" && S.anyEvent && !S.lastSensor;
-  if (needFlat && !S.flatHint) { S.flatHint = true; showHint("Hold the phone flat for a moment to lock the compass."); }
+  if (needFlat && !S.flatHint) { S.flatHint = true; showHint(tl("Hold the phone flat for a moment to lock the compass.", "Halte das Handy kurz flach, damit sich der Kompass einstellt.")); }
   else if (!needFlat && S.flatHint) { S.flatHint = false; $("hint").hidden = true; }
 }
 
@@ -32,10 +32,12 @@ function aboutLine(sat) {
   const who = op?.op || ownerName(c);
   const year = c?.launch ? c.launch.slice(0, 4) : d?.year;
   const bits = [], train = trainInfo(sat);
-  if (train && train.size > 1) bits.push(`one of ${train.size} Starlinks launched together${train.launch ? ` on ${fmtDate(new Date(train.launch + "T00:00:00Z"))}` : ""}, still climbing`);
+  const day = train && train.launch ? fmtDate(new Date(train.launch + "T00:00:00Z")) : "";
+  if (train && train.size > 1) bits.push(tl(`one of ${train.size} Starlinks launched together${day ? ` on ${day}` : ""}, still climbing`,
+                                            `einer von ${train.size} zusammen gestarteten Starlinks${day ? ` (${day})` : ""}, steigt noch`));
   if (who) bits.push(who);
-  if (year && !(train && train.launch)) bits.push(`launched ${year}`);
-  if (o) bits.push(`${o.short}, ${Math.round((o.apo + o.peri) / 2).toLocaleString("en")} km up`);
+  if (year && !(train && train.launch)) bits.push(tl(`launched ${year}`, `gestartet ${year}`));
+  if (o) bits.push(`${o.short}, ${fmtN(Math.round((o.apo + o.peri) / 2))} ${tl("km up", "km hoch")}`);
   return bits.join(" · ");
 }
 
@@ -86,17 +88,23 @@ function watchText(sat, n) {
     try { navigator.vibrate?.(pattern); } catch {}
     showHint(msg, 8000);
   };
-  const vis = p.visible ? (p.mag < 50 ? ` · ${magText(p.mag)}, ${brightWord(p.mag, p.limit)}` : "") : " · not visible (in Earth's shadow or the sky is too bright)";
+  const vis = p.visible ? (p.mag < 50 ? ` · ${magText(p.mag)}, ${brightWord(p.mag, p.limit)}` : "")
+    : tl(" · not visible (in Earth's shadow or the sky is too bright)", " · nicht sichtbar (im Erdschatten oder der Himmel ist zu hell)");
+  const rise = compassName(p.startAz), top = compassName(p.maxAz), el = p.maxEl.toFixed(0);
   if (now < p.start) {
-    if (p.start - now <= 60e3 && p.start - now > 45e3) buzz("soon", [150], `${name} rises in 1 minute in the ${compassName(p.startAz)}.`);
-    return [`Rises in ${fmtCountdown(p.start - now)} in the ${compassName(p.startAz)} (${p.startAz.toFixed(0)}°)`,
-            `At ${fmtTime(p.start)}, highest ${p.maxEl.toFixed(0)}° in the ${compassName(p.maxAz)} at ${fmtTime(p.maxTime)}${vis}`];
+    if (p.start - now <= 60e3 && p.start - now > 45e3) buzz("soon", [150], tl(`${name} rises in 1 minute in the ${rise}.`, `${name} geht in 1 Minute im ${rise} auf.`));
+    const t = fmtCountdown(p.start - now);
+    return [tl(`Rises in ${t} in the ${rise} (${p.startAz.toFixed(0)}°)`, `Geht in ${t} im ${rise} auf (${p.startAz.toFixed(0)}°)`),
+            tl(`At ${fmtTime(p.start)}, highest ${el}° in the ${top} at ${fmtTime(p.maxTime)}${vis}`, `Um ${fmtTime(p.start)}, am höchsten (${el}°) im ${top} um ${fmtTime(p.maxTime)}${vis}`)];
   }
-  if (now - p.start < 30e3) buzz("rise", [200, 100, 200], `${name} is rising now, low in the ${compassName(p.startAz)}.`);
-  const where = n && n.el > 0 ? `Look ${compassName(n.az)} (${n.az.toFixed(0)}°), ${n.el.toFixed(0)}° up` : `Rising now in the ${compassName(p.startAz)}`;
-  const next = now < p.maxTime ? `highest (${p.maxEl.toFixed(0)}°) in ${fmtCountdown(p.maxTime - now)}` : `sets in the ${compassName(p.endAz)} in ${fmtCountdown(p.end - now)}`;
-  return [where, `${next[0].toUpperCase()}${next.slice(1)}${n && n.el > 0 ? ` · ${visText(n.lit, n.mag)}` : ""}`];
+  if (now - p.start < 30e3) buzz("rise", [200, 100, 200], tl(`${name} is rising now, low in the ${rise}.`, `${name} geht gerade auf, tief im ${rise}.`));
+  const where = n && n.el > 0 ? lookText(n) : tl(`Rising now in the ${rise}`, `Geht gerade im ${rise} auf`);
+  const next = now < p.maxTime ? tl(`Highest (${el}°) in ${fmtCountdown(p.maxTime - now)}`, `Am höchsten (${el}°) in ${fmtCountdown(p.maxTime - now)}`)
+    : tl(`Sets in the ${compassName(p.endAz)} in ${fmtCountdown(p.end - now)}`, `Geht in ${fmtCountdown(p.end - now)} im ${compassName(p.endAz)} unter`);
+  return [where, `${next}${n && n.el > 0 ? ` · ${visText(n.lit, n.mag)}` : ""}`];
 }
+// "Look NE (45°), 30° up"
+const lookText = n => tl(`Look ${compassName(n.az)} (${n.az.toFixed(0)}°), ${n.el.toFixed(0)}° up`, `Schau nach ${compassName(n.az)} (${n.az.toFixed(0)}°), ${n.el.toFixed(0)}° hoch`);
 
 function updateCard() {
   const card = $("card");
@@ -111,18 +119,22 @@ function updateCard() {
   if (watching) {
     [where, meta] = watching;
   } else if (n && n.el > 0) {
-    where = `Look ${compassName(n.az)} (${n.az.toFixed(0)}°), ${n.el.toFixed(0)}° up`;
-    meta = `${fmtKm(n.range)} away · ${visText(n.lit, n.mag)}`;
+    where = lookText(n);
+    meta = `${fmtKm(n.range)} ${tl("away", "entfernt")} · ${visText(n.lit, n.mag)}`;
   } else if (!S.loc) {
-    where = "Set your location to see where it is"; meta = "";
+    where = tl("Set your location to see where it is", "Lege deinen Standort fest, um zu sehen, wo er ist"); meta = "";
   } else {
-    where = "Below your horizon";
+    where = tl("Below your horizon", "Unter deinem Horizont");
     const p = nextPass(sat);
-    meta = p ? `Next rises ${fmtDayTime(p.start)} in the ${compassName(p.startAz)}, peaks ${p.maxEl.toFixed(0)}°${p.visible ? " (visible)" : ""}` : "Doesn't rise above 10° in the next 48 hours";
+    meta = !p ? tl("Doesn't rise above 10° in the next 48 hours", "Steigt in den nächsten 48 Stunden nicht über 10°")
+      : tl(`Next rises ${fmtDayTime(p.start)} in the ${compassName(p.startAz)}, peaks ${p.maxEl.toFixed(0)}°${p.visible ? " (visible)" : ""}`,
+           `Geht ${fmtDayTime(p.start)} im ${compassName(p.startAz)} auf, bis ${p.maxEl.toFixed(0)}° hoch${p.visible ? " (sichtbar)" : ""}`);
   }
   $("cardWhere").textContent = where;
   $("cardMeta").textContent = meta;
   $("cardAbout").textContent = aboutLine(sat);
+  $("cardShare").hidden = !(WATCH.sat === sat && WATCH.pass);   // a followed pass can be shared
+  $("cardFb").hidden = !canAskSighting(sat, n);
 }
 
 // Select a satellite. Unless a specific pass is about to be followed (keepWatch), follow its next

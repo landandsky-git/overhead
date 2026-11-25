@@ -20,7 +20,7 @@ async function startWorker() {
     else if (m.type === "passes" && m.job === S.passJob) applyPasses(m.list);
     else if (m.type === "lookback") applyLookback(m);
   };
-  w.onerror = () => { S.loading = "The satellite calculator didn't start. Reload the page."; updateStatus(); };
+  w.onerror = () => { S.loading = tl("The satellite calculator didn't start. Reload the page.", "Die Satellitenberechnung ist nicht gestartet. Lade die Seite neu."); updateStatus(); };
   worker.real = w;
   for (const m of worker.queue.splice(0)) w.postMessage(m);
 }

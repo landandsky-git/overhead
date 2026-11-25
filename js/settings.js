@@ -9,8 +9,8 @@ function fmtOffset(ms) {
 }
 function refreshTimeLabels() {
   const t = simNow(), shifted = S.timeOffset !== 0;
-  $("timeLabel").textContent = shifted ? `${dayWord(t)} ${fmtTime(t)} · ${fmtOffset(S.timeOffset)}` : `Now · ${fmtTime(t)}`;
-  $("timePill").textContent = `Showing ${dayWord(t)} ${fmtTime(t)} (${fmtOffset(S.timeOffset)}) · tap to change`;
+  $("timeLabel").textContent = shifted ? `${dayWord(t)} ${fmtTime(t)} · ${fmtOffset(S.timeOffset)}` : `${tl("Now", "Jetzt")} · ${fmtTime(t)}`;
+  $("timePill").textContent = tl(`Showing ${dayWord(t)} ${fmtTime(t)} (${fmtOffset(S.timeOffset)}) · tap to change`, `Zeigt ${dayWord(t)} ${fmtTime(t)} (${fmtOffset(S.timeOffset)}) · tippen zum Ändern`);
   $("timePill").hidden = !shifted || !$("timeBar").hidden;
   document.body.classList.toggle("timeshift", shifted && $("timeBar").hidden);
 }
@@ -35,9 +35,22 @@ $("timeClose").addEventListener("click", closeTimeBar);
 function renderSkySetting() {
   $("skyIn").innerHTML = SKY_LIMITS.map(([v, name]) => `<button role="radio" aria-checked="${v === S.limit}" data-v="${v}">${name}</button>`).join("");
   const now = S.loc ? conditionsAt(Date.now()) : null;
-  $("skyNote").textContent = `On a dark, moonless night you see down to magnitude ${S.limit}. Twilight and moonlight lower that, and the app allows for both` +
-    (now && now.sunEl < -6 ? `: right now ${seeingText(now)}.` : ".");
+  $("skyNote").textContent = tl(`On a dark, moonless night you see down to magnitude ${fmtN(S.limit, 1)}. Twilight and moonlight lower that, and the app allows for both`,
+                                `In einer dunklen, mondlosen Nacht siehst du bis Magnitude ${fmtN(S.limit, 1)}. Dämmerung und Mondlicht verringern das, und die App berücksichtigt beides`) +
+    (now && now.sunEl < -6 ? `: ${tl("right now", "gerade")} ${seeingText(now)}.` : ".");
 }
+
+// --- language: automatic (the phone's), English or German; changing it reloads the app ---
+function renderLangSetting() {
+  const pref = store.get("lang", "auto");
+  $("langIn").innerHTML = [["auto", tl("Automatic", "Automatisch")], ["en", "English"], ["de", "Deutsch"]]
+    .map(([v, name]) => `<button role="radio" aria-checked="${v === pref}" data-v="${v}">${name}</button>`).join("");
+}
+$("langIn").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b || b.dataset.v === store.get("lang", "auto")) return;
+  store.set("lang", b.dataset.v);
+  location.reload();
+});
 $("skyIn").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   S.limit = +b.dataset.v; store.set("limit", S.limit);
@@ -47,27 +60,33 @@ $("skyIn").addEventListener("click", e => {
 
 // --- quick guide: six short steps, each pointing at the button it explains ---
 const GUIDE = [
-  { title: "Point your phone at the sky", spot: [],
-    text: "Hold your phone up like a window onto the sky. The satellites in that direction appear on screen. Gold dots are lit by the sun, and the bigger the dot, the brighter it looks. Blue dots are in Earth's shadow, so you can't see them." },
-  { title: "Line up the compass", spot: ["alignBtn"],
-    text: "Phone compasses are often a few degrees off. Tap ◎, center a bright star, planet or the Moon in the camera picture, and tap its name. Everything then lines up with the real sky." },
-  { title: "Tap a satellite", spot: [],
-    text: "Tap a dot to see where to look and what it is. Tap the card for who runs it, when it launched and its orbit, and tap ☆ to make it a favorite. Favorites are always labelled." },
-  { title: "Plan your night", spot: ["tabTonight"],
-    text: "Tonight shows when it gets dark, the clouds, the Moon and the best passes. Tap a pass to follow it: you get its path across the sky, a countdown, and a buzz when it rises." },
-  { title: "Saw something move?", spot: ["grab"],
-    text: "Open the list and tap “Saw something moving?”. Point where you saw it, and the app finds out which satellite it was." },
-  { title: "A few more buttons", spot: ["timeBtn", "redBtn", "setBtn"],
-    text: "◷ shows the sky up to 12 hours ahead. R turns the screen red so your eyes stay used to the dark. ⚙ has your location, how dark your sky is, and this guide." },
+  { title: tl("Point your phone at the sky", "Richte dein Handy auf den Himmel"), spot: [],
+    text: tl("Hold your phone up like a window onto the sky. The satellites in that direction appear on screen. Gold dots are lit by the sun, and the bigger the dot, the brighter it looks. Blue dots are in Earth's shadow, so you can't see them.",
+             "Halte dein Handy hoch wie ein Fenster zum Himmel. Die Satelliten in dieser Richtung erscheinen auf dem Bildschirm. Goldene Punkte werden von der Sonne angestrahlt, und je größer der Punkt, desto heller wirkt er. Blaue Punkte sind im Erdschatten, die kannst du nicht sehen.") },
+  { title: tl("Line up the compass", "Kompass ausrichten"), spot: ["alignBtn"],
+    text: tl("Phone compasses are often a few degrees off. Tap ◎, center a bright star, planet or the Moon in the camera picture, and tap its name. Everything then lines up with the real sky.",
+             "Handykompasse liegen oft ein paar Grad daneben. Tippe auf ◎, bring einen hellen Stern, Planeten oder den Mond in die Mitte des Kamerabilds und tippe auf seinen Namen. Dann passt alles zum echten Himmel.") },
+  { title: tl("Tap a satellite", "Tippe einen Satelliten an"), spot: [],
+    text: tl("Tap a dot to see where to look and what it is. Tap the card for who runs it, when it launched and its orbit, and tap ☆ to make it a favorite. Favorites are always labelled.",
+             "Tippe auf einen Punkt, um zu sehen, wohin du schauen musst und was es ist. Tippe auf die Karte für Betreiber, Start und Umlaufbahn, und auf ☆, um ihn zum Favoriten zu machen. Favoriten sind immer beschriftet.") },
+  { title: tl("Plan your night", "Plane deine Nacht"), spot: ["tabTonight", "tabSpace"],
+    text: tl("Tonight shows when it gets dark, the clouds, the Moon and the best passes. Tap a pass to follow it: you get its path across the sky, a countdown, and a buzz when it rises. Space lists rocket launches and who is in space right now.",
+             "„Nacht“ zeigt, wann es dunkel wird, die Wolken, den Mond und die besten Überflüge. Tippe einen Überflug an, um ihm zu folgen: Du bekommst seine Bahn über den Himmel, einen Countdown und ein Vibrieren, wenn er aufgeht. „Raumfahrt“ zeigt Raketenstarts und wer gerade im All ist.") },
+  { title: tl("Saw something move?", "Etwas Bewegtes gesehen?"), spot: ["grab"],
+    text: tl("Open the list and tap “Saw something moving?”. Point where you saw it, and the app finds out which satellite it was.",
+             "Öffne die Liste und tippe auf „Etwas Bewegtes gesehen?“. Zeig dorthin, wo du es gesehen hast, und die App findet heraus, welcher Satellit es war.") },
+  { title: tl("A few more buttons", "Noch ein paar Tasten"), spot: ["timeBtn", "redBtn", "setBtn", "camBtn"],
+    text: tl("◷ shows the sky up to 12 hours ahead. ◉ puts the camera picture behind it. R turns the screen red (tap again for dimmer) so your eyes stay used to the dark. ⚙ has your location, how dark your sky is, and this guide.",
+             "◷ zeigt den Himmel bis zu 12 Stunden im Voraus. ◉ legt das Kamerabild dahinter. R färbt den Bildschirm rot (noch einmal tippen für dunkler), damit deine Augen an die Dunkelheit gewöhnt bleiben. Unter ⚙ findest du deinen Standort, wie dunkel dein Himmel ist, und diese Anleitung.") },
 ];
 let guideAt = 0;
 function showGuideStep() {
   document.querySelectorAll(".spot").forEach(el => el.classList.remove("spot"));
   const g = GUIDE[guideAt];
-  $("guideStep").textContent = `${guideAt + 1} OF ${GUIDE.length}`;
+  $("guideStep").textContent = tl(`${guideAt + 1} OF ${GUIDE.length}`, `${guideAt + 1} VON ${GUIDE.length}`);
   $("guideTitle").textContent = g.title;
   $("guideText").textContent = g.text;
-  $("guideNext").textContent = guideAt === GUIDE.length - 1 ? "Done" : "Next";
+  $("guideNext").textContent = guideAt === GUIDE.length - 1 ? tl("Done", "Fertig") : tl("Next", "Weiter");
   g.spot.forEach(id => $(id).classList.add("spot"));
 }
 function openGuide() { guideAt = 0; $("guide").hidden = false; showGuideStep(); $("guideNext").focus(); }
@@ -82,23 +101,26 @@ $("guideBtn").addEventListener("click", () => { $("settings").hidden = true; ope
 // --- settings ---
 function updateLocNow() {
   $("locNow").innerHTML = S.loc
-    ? `${esc(S.loc.name || "Custom coordinates")}<span class="sub">${fmtLatLon(S.loc.lat, S.loc.lon)}${S.loc.h ? ` · ${Math.round(S.loc.h).toLocaleString("en")} m` : ""}</span>`
-    : `Not set yet<span class="sub">Search for your town below</span>`;
+    ? `${esc(locName(S.loc) || tl("Custom coordinates", "Eigene Koordinaten"))}<span class="sub">${fmtLatLon(S.loc.lat, S.loc.lon)}${S.loc.h ? ` · ${fmtN(Math.round(S.loc.h))} m` : ""}</span>`
+    : tl(`Not set yet<span class="sub">Search for your town below</span>`, `Noch nicht festgelegt<span class="sub">Suche unten nach deinem Ort</span>`);
 }
 function updateTleInfo() {
   const n = S.counts, total = n.bright + n.starlink + n.other;
-  $("cntBright").textContent = n.bright.toLocaleString("en");
-  $("cntStarlink").textContent = n.starlink.toLocaleString("en");
-  $("cntOther").textContent = n.other.toLocaleString("en");
-  $("tleInfo").textContent = total ? `${total.toLocaleString("en")} satellites from CelesTrak${S.tleTime ? `, downloaded ${fmtDate(new Date(S.tleTime))} ${fmtTime(S.tleTime)}` : ""}. Updates itself every 6 hours.` : "No satellite data yet.";
+  $("cntBright").textContent = fmtN(n.bright);
+  $("cntStarlink").textContent = fmtN(n.starlink);
+  $("cntOther").textContent = fmtN(n.other);
+  const when = S.tleTime ? tl(`, downloaded ${fmtDate(new Date(S.tleTime))} ${fmtTime(S.tleTime)}`, `, geladen am ${fmtDate(new Date(S.tleTime))} um ${fmtTime(S.tleTime)}`) : "";
+  $("tleInfo").textContent = total ? tl(`${fmtN(total)} satellites from CelesTrak${when}. Updates itself every 6 hours.`, `${fmtN(total)} Satelliten von CelesTrak${when}. Aktualisiert sich alle 6 Stunden.`)
+    : tl("No satellite data yet.", "Noch keine Satellitendaten.");
 }
 function openSettings() {
   $("latIn").value = S.loc?.lat ?? ""; $("lonIn").value = S.loc?.lon ?? "";
   $("corrIn").value = S.corr; $("corrVal").textContent = (S.corr > 0 ? "+" : "") + S.corr + "°";
   $("showBright").checked = S.show.bright; $("showStarlink").checked = S.show.starlink; $("showOther").checked = S.show.other;
   $("eyeOnly").checked = S.eyeOnly;
+  $("batteryIn").checked = S.battery;
   $("locErr").hidden = true;
-  updateLocNow(); updateTleInfo(); renderSkySetting(); $("settings").hidden = false;
+  updateLocNow(); updateTleInfo(); renderSkySetting(); renderSightNote(); renderLangSetting(); $("settings").hidden = false;
 }
 function setLocation(loc) {
   S.loc = loc; store.set("loc", loc);
@@ -107,11 +129,13 @@ function setLocation(loc) {
 }
 $("setBtn").addEventListener("click", openSettings);
 $("setDone").addEventListener("click", () => {
-  if (!S.loc) { $("locErr").textContent = "Choose a location first, so the app knows which part of the sky you see."; $("locErr").hidden = false; return; }
+  if (!S.loc) { $("locErr").textContent = tl("Choose a location first, so the app knows which part of the sky you see.", "Wähle zuerst einen Standort, damit die App weiß, welchen Teil des Himmels du siehst."); $("locErr").hidden = false; return; }
   $("settings").hidden = true;
 });
 $("corrIn").addEventListener("input", e => { S.corr = +e.target.value; $("corrVal").textContent = (S.corr > 0 ? "+" : "") + S.corr + "°"; store.set("corr", S.corr); });
 $("eyeOnly").addEventListener("change", e => { S.eyeOnly = e.target.checked; store.set("eyeOnly", S.eyeOnly); renderSheet(); updateStatus(); });
+$("batteryIn").addEventListener("change", e => { S.battery = e.target.checked; store.set("battery", S.battery); });
+$("sightReset").addEventListener("click", () => { forgetSightings(); renderSightNote(); });
 for (const [id, cat] of [["showBright", "bright"], ["showStarlink", "starlink"], ["showOther", "other"]]) {
   $(id).addEventListener("change", e => { S.show[cat] = e.target.checked; store.set("show", S.show); computePaths(); renderSheet(); updateStatus(); });
 }
@@ -123,17 +147,17 @@ async function searchPlaces() {
   if (q.length < 2) { box.innerHTML = ""; return; }
   if (placeCtl) placeCtl.abort();
   placeCtl = new AbortController();
-  box.innerHTML = `<p class="small">Searching…</p>`;
+  box.innerHTML = `<p class="small">${tl("Searching…", "Suche…")}</p>`;
   try {
-    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&language=en&format=json`, { signal: placeCtl.signal });
+    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&language=${LANG}&format=json`, { signal: placeCtl.signal });
     if (!r.ok) throw new Error("HTTP " + r.status);
     placeList = (await r.json()).results || [];
     box.innerHTML = placeList.length ? placeList.map((p, i) => `
       <button class="place" data-i="${i}"><span>${esc(p.name)}</span>
       <span class="sub">${esc([p.admin1, p.country].filter(Boolean).join(", "))} · ${fmtLatLon(p.latitude, p.longitude)}</span></button>`).join("")
-      : `<p class="small">No places found for "${esc(q)}". Try another spelling or a larger town nearby.</p>`;
+      : `<p class="small">${tl(`No places found for "${esc(q)}". Try another spelling or a larger town nearby.`, `Keine Orte für „${esc(q)}“ gefunden. Versuche eine andere Schreibweise oder einen größeren Ort in der Nähe.`)}</p>`;
   } catch (e) {
-    if (e.name !== "AbortError") box.innerHTML = `<p class="err">Couldn't search right now. Check your connection, or use GPS or coordinates instead.</p>`;
+    if (e.name !== "AbortError") box.innerHTML = `<p class="err">${tl("Couldn't search right now. Check your connection, or use GPS or coordinates instead.", "Die Suche klappt gerade nicht. Prüfe deine Verbindung oder nutze GPS oder Koordinaten.")}</p>`;
   }
 }
 $("placeResults").addEventListener("click", e => {
@@ -143,20 +167,20 @@ $("placeResults").addEventListener("click", e => {
   $("placeResults").innerHTML = ""; $("placeIn").value = ""; $("locErr").hidden = true;
 });
 $("gpsBtn").addEventListener("click", async () => {
-  const b = $("gpsBtn"); b.textContent = "Finding you…";
-  try { const l = await getLocation(); setLocation({ ...l, name: "Your GPS location", src: "gps" }); $("locErr").hidden = true; }
+  const b = $("gpsBtn"), label = b.textContent; b.textContent = tl("Finding you…", "Standort wird gesucht…");
+  try { const l = await getLocation(); setLocation({ ...l, name: GPS_NAME, src: "gps" }); $("locErr").hidden = true; }
   catch (e) { $("locErr").textContent = e.message; $("locErr").hidden = false; }
-  b.textContent = "Use my phone's GPS instead";
+  b.textContent = label;
 });
 $("coordBtn").addEventListener("click", () => {
   const lat = parseFloat($("latIn").value), lon = parseFloat($("lonIn").value);
   if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
-    $("locErr").textContent = "Latitude must be between -90 and 90, and longitude between -180 and 180."; $("locErr").hidden = false; return;
+    $("locErr").textContent = tl("Latitude must be between -90 and 90, and longitude between -180 and 180.", "Der Breitengrad muss zwischen -90 und 90 liegen, der Längengrad zwischen -180 und 180."); $("locErr").hidden = false; return;
   }
   setLocation({ lat, lon, h: 0, name: null, src: "manual" }); $("locErr").hidden = true;
 });
 $("refreshBtn").addEventListener("click", async () => {
-  const b = $("refreshBtn"); b.textContent = "Downloading…"; b.disabled = true;
+  const b = $("refreshBtn"), label = b.textContent; b.textContent = tl("Downloading…", "Wird geladen…"); b.disabled = true;
   await loadSats(true);
-  b.textContent = "Download fresh satellite data"; b.disabled = false;
+  b.textContent = label; b.disabled = false;
 });

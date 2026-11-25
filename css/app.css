@@ -23,6 +23,7 @@
 html, body { height: 100%; margin: 0; }
 body { background: var(--sky); color: var(--ink); font: 14px/1.4 var(--font-body); overflow: hidden; overscroll-behavior: none; touch-action: none; }
 body.red { filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(.75); }
+body.red.dim { filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(.4); }
 [hidden] { display: none !important; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 button:focus-visible, input:focus-visible, .card:focus-visible { outline: 2px solid var(--target); outline-offset: 2px; }
@@ -61,6 +62,7 @@ body.timeshift .hint { top: calc(env(safe-area-inset-top, 0px) + 118px); }
 .tb-ticks span { position: absolute; transform: translateX(-50%); font: 10px var(--font-data); color: var(--dim); white-space: nowrap; }
 .seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
 .seg button { border: 1px solid var(--line); border-radius: 8px; padding: 9px 4px; font-size: 13px; color: var(--dim); }
+.seg.seg3 { grid-template-columns: repeat(3, 1fr); }
 .seg button[aria-checked="true"] { border-color: var(--lit); color: var(--ink); background: var(--panel-2); }
 @media (max-width: 380px) { .seg { grid-template-columns: repeat(2, 1fr); } }
 
@@ -74,7 +76,12 @@ body.timeshift .hint { top: calc(env(safe-area-inset-top, 0px) + 118px); }
 .card button { font: 11px var(--font-data); color: var(--dim); text-transform: uppercase; letter-spacing: .08em; padding: 4px 0 4px 8px; }
 
 .sheet { position: fixed; left: 0; right: 0; bottom: 0; background: var(--panel); border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 8px); max-height: 62%; display: flex; flex-direction: column; touch-action: pan-y; }
-.sheet-head { display: flex; align-items: center; gap: 8px; padding-block: 10px; }
+.sheet-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; row-gap: 6px; padding-block: 10px; }
+#sheetTitle { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Not enough room for the title and the tabs side by side (narrow phones, longer German words):
+   the tabs get their own row, spread across it. */
+@media (max-width: 370px) { .tabs { flex-basis: 100%; justify-content: space-between; } }
+@media (max-width: 560px) { html[lang="de"] .tabs { flex-basis: 100%; justify-content: space-between; } }
 .grab { flex: 1; min-width: 0; text-align: left; font: 600 13px var(--font-display); letter-spacing: .1em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .grab::after { content: "▴"; color: var(--dim); }
 .sheet.open .grab::after { content: "▾"; }
@@ -156,6 +163,8 @@ button.passrow { width: 100%; text-align: left; }
 .pass .row { border-top: 0; padding-bottom: 4px; }
 .row .sub.tn-wrap { white-space: normal; }
 .cal { font: 11px var(--font-data); color: var(--target); text-transform: uppercase; letter-spacing: .06em; padding: 2px 0 10px 20px; }
+.pass-acts { display: flex; gap: 22px; }
+.pass-acts .share { padding-left: 0; }
 .guide { position: fixed; inset: 0; background: rgba(3, 5, 10, .62); display: flex; align-items: flex-end; justify-content: center; padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 96px); }
 .guide-card { width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 8px; }
 .guide-card h2 { margin: 0; font: 600 18px var(--font-display); letter-spacing: .06em; text-transform: uppercase; }
@@ -171,3 +180,11 @@ button.passrow { width: 100%; text-align: left; }
 .faq details p { padding-top: 6px; }
 .linkbtn { color: var(--target); font: 12px var(--font-data); text-transform: uppercase; letter-spacing: .08em; padding: 8px 0; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+
+.feedback { display: flex; align-items: center; gap: 12px; margin-top: 4px; font: 11px var(--font-data); color: var(--dim); }
+.card .feedback button { color: var(--target); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; letter-spacing: .04em; }
+.camfab { position: fixed; right: 16px; top: 50%; transform: translateY(-50%); }
+.camfab[aria-pressed="true"] { border-color: var(--target); color: var(--target); }
+.row.launch .nm { white-space: normal; }
+#modelDetailBtn { margin-top: 4px; }
+@media (max-width: 400px) { .tab { padding: 6px 7px; letter-spacing: .02em; } .sheet-head { gap: 4px; } }

@@ -1,6 +1,7 @@
 // Background thread: propagates every satellite so the sky view stays smooth on a phone.
 // Messages in:  reset | add {list:[[l1,l2,stdMag],...]} | obs {lat,lon,h} | tick {t, gen}
 //               passes {t, hours, indices, limit, job} | lookback {t0, t1, step, dir, radius, job}
+//               mags {list: [[idx, stdMag], ...]}
 // Messages out: pos {t, gen, data: Float64Array [idx, az, el, rangeKm, lit, mag, az+1s, el+1s] ...} | passes {job, list}
 //               lookback {job, hits: [{idx, t, deg, lit, mag, from, to}]}
 // The page normally starts this worker with the orbit library already bundled in front of it,
@@ -196,6 +197,9 @@ onmessage = e => {
         recs.push(r); mags.push(m0);
       }
       cand = null;
+      break;
+    case "mags":   // brightness corrections from the viewer's sightings: [[idx, stdMag], ...]
+      for (const [i, m0] of m.list) mags[i] = m0;
       break;
     case "obs":
       lat = m.lat * D2R; lon = m.lon * D2R;

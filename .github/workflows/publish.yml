@@ -48,7 +48,7 @@ jobs:
         run: |
           mkdir -p site/data
           cp index.html worker.js codes.js sky-data.js model3d.js sw.js manifest.webmanifest icon.svg icon-180.png icon-512.png tle-fallback.txt site/
-          cp -r lib js css site/
+          cp -r lib js css models site/
 
       # CSV rather than the classic two-line text, which leaves out satellites numbered above 99999.
       - name: Download satellite lists (keep the last good copy if CelesTrak says no)
@@ -66,6 +66,15 @@ jobs:
             fi
           done
           date -u +"%Y-%m-%dT%H:%M:%SZ" > site/data/updated.txt
+
+      # Upcoming rocket launches and the people in space, for the Space tab, from The Space Devs'
+      # Launch Library 2 (which allows only a few requests an hour, so phones don't ask it directly).
+      - name: Fetch launches and crew (keep the last good copy if the library says no)
+        run: |
+          if python3 tools/build-space.py site/data/space.json; then exit 0; fi
+          echo "Launch Library gave no data, reusing the published copy"
+          curl -sSL "${{ steps.pages.outputs.base_url }}/data/space.json" -o site/data/space.json || true
+          grep -q '"launches"' site/data/space.json 2>/dev/null || rm -f site/data/space.json
 
       # Typical brightness of each satellite, from Mike McCants' catalog and radar sizes.
       # Rebuilt once a day (and on every push); otherwise the published copy is reused.

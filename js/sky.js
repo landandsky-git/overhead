@@ -46,7 +46,8 @@ function polyline(pts, R, f, th) {
   ctx.stroke();
 }
 
-function compassName(az) { return ["N","NE","E","SE","S","SW","W","NW"][Math.round(az / 45) % 8]; }
+const COMPASS = tl(["N", "NE", "E", "SE", "S", "SW", "W", "NW"], ["N", "NO", "O", "SO", "S", "SW", "W", "NW"]);
+function compassName(az) { return COMPASS[Math.round(az / 45) % 8]; }
 function viewAz(R) { return ((Math.atan2(-R[2], -R[5]) * R2D) + 360) % 360; }
 
 const GRID = [];
@@ -95,8 +96,8 @@ function drawPassArc(R, f, th, P) {
   }
   const rise = arc.find(p => p.el >= 0), top = arc.reduce((a, b) => b.el > a.el ? b : a);
   ctx.font = `600 11px ${FONT_M}`; ctx.textAlign = "center";
-  if (rise) { const q = P(rise.v); if (q.front) ctx.fillText("rises here", q.x, q.y + 14); }
-  { const q = P(top.v); if (q.front) ctx.fillText(`highest ${top.el.toFixed(0)}°`, q.x, q.y - 13); }
+  if (rise) { const q = P(rise.v); if (q.front) ctx.fillText(tl("rises here", "geht hier auf"), q.x, q.y + 14); }
+  { const q = P(top.v); if (q.front) ctx.fillText(`${tl("highest", "höchster Punkt")} ${top.el.toFixed(0)}°`, q.x, q.y - 13); }
   ctx.textAlign = "left";
 }
 
@@ -106,11 +107,12 @@ const readoutEl = $("readout");
 
 function draw() {
   requestAnimationFrame(draw);
+  if (skipFrame()) return;   // battery saver (power.js)
   frameNo++;
   if (!W) resize();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   // While aligning with the camera on, the sky is drawn over the live camera picture.
-  if (ALIGN.camera) ctx.clearRect(0, 0, W, H); else { ctx.fillStyle = C.sky; ctx.fillRect(0, 0, W, H); }
+  if (ALIGN.camera || CAM.on) ctx.clearRect(0, 0, W, H); else { ctx.fillStyle = C.sky; ctx.fillRect(0, 0, W, H); }
   if (S.mode !== "sensor") S.R = rotFromView(S.view.az, S.view.el);
   const R = S.R; if (!R) return;
   const th = S.mode === "sensor" ? screenAngle() : 0;
@@ -129,7 +131,7 @@ function draw() {
   }
   ctx.font = `10px ${FONT_M}`; ctx.fillStyle = C.dim;
   for (const alt of [30, 60]) { const q = project(Math.round(viewAz(R) / 30) * 30 + 15, alt, R, f, th); if (q.front) ctx.fillText(alt + "°", q.x, q.y - 6); }
-  { const q = project(0, 90, R, f, th); if (q.front) ctx.fillText("ZENITH", q.x, q.y - 8); }
+  { const q = project(0, 90, R, f, th); if (q.front) ctx.fillText(tl("ZENITH", "ZENIT"), q.x, q.y - 8); }
 
   // constellation outlines and names (above the horizon only)
   ctx.strokeStyle = C.line; ctx.lineWidth = 1;
@@ -157,7 +159,7 @@ function draw() {
     const q = P(s.v); if (!q.front) continue;
     ctx.fillStyle = C.star; ctx.globalAlpha = s.mag > seeLimit ? 0.22 : magAlpha(s.mag);
     ctx.beginPath(); ctx.arc(q.x, q.y, magRadius(s.mag), 0, 7); ctx.fill(); ctx.globalAlpha = 1;
-    if (s.mag < nameMag && s.name) { ctx.fillStyle = C.dim; ctx.fillText(s.name, q.x + 5, q.y + 8); }
+    if (s.mag < nameMag && s.name) { ctx.fillStyle = C.dim; ctx.fillText(skyName(s.name), q.x + 5, q.y + 8); }
   }
 
   // planets, always labelled: they are the brightest points in the sky and easy to mistake for satellites
@@ -167,7 +169,7 @@ function draw() {
     const q = P(p.v); if (!q.front) continue;
     ctx.fillStyle = C.planet; ctx.shadowColor = C.planet; ctx.shadowBlur = p.mag < 0 ? 8 : 3;
     ctx.beginPath(); ctx.arc(q.x, q.y, Math.max(2, magRadius(p.mag)), 0, 7); ctx.fill(); ctx.shadowBlur = 0;
-    ctx.fillText(p.name, q.x + 7, q.y + 9);
+    ctx.fillText(skyName(p.name), q.x + 7, q.y + 9);
   }
   if (sky.moon && sky.moon.el > -1) {
     const q = P(sky.moon.v);
@@ -177,7 +179,7 @@ function draw() {
       const t = [sv[0] - d * m[0], sv[1] - d * m[1], sv[2] - d * m[2]], tn = Math.hypot(...t) || 1;
       const q2 = P([m[0] + 0.02 * t[0] / tn, m[1] + 0.02 * t[1] / tn, m[2] + 0.02 * t[2] / tn]);
       drawMoon(q.x, q.y, 9, sky.moon.lit, Math.atan2(q2.y - q.y, q2.x - q.x));
-      ctx.fillStyle = C.moon; ctx.fillText(`Moon ${Math.round(sky.moon.lit * 100)}%`, q.x + 13, q.y + 12);
+      ctx.fillStyle = C.moon; ctx.fillText(tl(`Moon ${Math.round(sky.moon.lit * 100)}%`, `Mond ${Math.round(sky.moon.lit * 100)} %`), q.x + 13, q.y + 12);
     }
   }
   ctx.font = `10px ${FONT_M}`;
@@ -243,7 +245,7 @@ function draw() {
   const boxes = [[cx - 75, cy + 14, 150, 26]];
   const label = (e, color, force) => {
     if (labeled.has(e.sat.idx)) return;
-    const text = favName(e.sat) + (e.faint ? " (too faint)" : ""), w = ctx.measureText(text).width, b = [e.qx + 6, e.qy - 17, w + 2, 14];
+    const text = favName(e.sat) + (e.faint ? tl(" (too faint)", " (zu schwach)") : ""), w = ctx.measureText(text).width, b = [e.qx + 6, e.qy - 17, w + 2, 14];
     if (!force && boxes.some(o => b[0] < o[0] + o[2] && o[0] < b[0] + b[2] && b[1] < o[1] + o[3] && o[1] < b[1] + b[3])) return;
     boxes.push(b); labeled.add(e.sat.idx); ctx.fillStyle = color; ctx.fillText(text, e.qx + 7, e.qy - 6);
   };

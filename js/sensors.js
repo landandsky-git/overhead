@@ -110,21 +110,27 @@ function onAbsolute(e) {
 async function startSensors() {
   if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
     const p = await DeviceOrientationEvent.requestPermission();
-    if (p !== "granted") throw new Error("Motion access was denied. Allow it in Safari settings for this site, then reload.");
+    if (p !== "granted") throw new Error(tl("Motion access was denied. Allow it in Safari settings for this site, then reload.",
+                                            "Zugriff auf die Bewegungssensoren verweigert. Erlaube ihn in den Safari-Einstellungen für diese Seite und lade neu."));
   }
   window.addEventListener("deviceorientationabsolute", onAbsolute);
   window.addEventListener("deviceorientation", onRelative);
   try { await screen.orientation?.lock?.("portrait"); } catch {}   // works for the installed app on Android
   S.mode = "sensor";
-  setTimeout(() => { if (!S.anyEvent) { S.mode = "drag"; showHint("No motion sensors found. Drag the sky to look around.", 5000); } }, 2500);
+  setTimeout(() => {
+    if (S.anyEvent) return;
+    S.mode = "drag"; $("camBtn").hidden = true;
+    showHint(tl("No motion sensors found. Drag the sky to look around.", "Keine Bewegungssensoren gefunden. Zieh den Himmel, um dich umzusehen."), 5000);
+  }, 2500);
 }
 
 function getLocation() {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) return reject(new Error("This browser can't share its location. Search for your town in Settings."));
+    if (!navigator.geolocation) return reject(new Error(tl("This browser can't share its location. Search for your town in Settings.", "Dieser Browser kann keinen Standort liefern. Suche deinen Ort in den Einstellungen.")));
     navigator.geolocation.getCurrentPosition(
       p => resolve({ lat: +p.coords.latitude.toFixed(4), lon: +p.coords.longitude.toFixed(4), h: p.coords.altitude || 0 }),
-      err => reject(new Error(err.code === 1 ? "Location access was denied. Search for your town in Settings instead." : "Couldn't get your location. Search for your town in Settings.")),
+      err => reject(new Error(err.code === 1 ? tl("Location access was denied. Search for your town in Settings instead.", "Standortzugriff verweigert. Suche stattdessen deinen Ort in den Einstellungen.")
+                                             : tl("Couldn't get your location. Search for your town in Settings.", "Dein Standort ließ sich nicht ermitteln. Suche deinen Ort in den Einstellungen."))),
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 });
   });
 }

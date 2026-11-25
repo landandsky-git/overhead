@@ -39,7 +39,7 @@ function magnitude(m0, p, sunV, obs, range, el) {
 }
 // How faint you can see depends on your sky (Settings): about magnitude 3.5 in a city centre,
 // 4.5 in a suburb, 5.5 in a village and 6.5 in dark countryside. S.limit holds that limit.
-const SKY_LIMITS = [[3.5, "City"], [4.5, "Suburb"], [5.5, "Village"], [6.5, "Dark countryside"]];
+const SKY_LIMITS = [[3.5, tl("City", "Stadt")], [4.5, tl("Suburb", "Vorort")], [5.5, tl("Village", "Dorf")], [6.5, tl("Dark countryside", "Dunkles Land")]];
 // What you can actually see right now is less: twilight and moonlight brighten the sky. Twilight takes
 // up to 3.5 magnitudes off between the Sun 18 and 6 degrees below the horizon; a full Moon high up
 // takes off up to half of what your sky gains over a city's (the darker your sky, the more it loses).
@@ -59,13 +59,13 @@ function conditionsAt(t) {
 // "down to magnitude 3.9 (Moon 70% lit)": the limit and what is taking it below your sky setting
 function seeingText(c) {
   const why = [];
-  if (c.sunEl > -15) why.push("twilight");
-  if (c.moonEl > 0 && c.moonLit > 0.25 && S.limit > 3.5) why.push(`Moon ${Math.round(c.moonLit * 100)}% lit`);
-  return `down to magnitude ${c.limit.toFixed(1)}${why.length ? ` (${why.join(", ")})` : ""}`;
+  if (c.sunEl > -15) why.push(tl("twilight", "Dämmerung"));
+  if (c.moonEl > 0 && c.moonLit > 0.25 && S.limit > 3.5) why.push(tl(`Moon ${Math.round(c.moonLit * 100)}% lit`, `Mond zu ${Math.round(c.moonLit * 100)} % beleuchtet`));
+  return `${tl("down to magnitude", "bis Magnitude")} ${fmtN(c.limit, 1)}${why.length ? ` (${why.join(", ")})` : ""}`;
 }
 function brightWord(mag, L = limitNow()) {
-  return mag < L - 5 ? "very bright" : mag < L - 3 ? "bright" : mag < L - 1.5 ? "easy to see"
-    : mag < L ? "faint, but visible from your sky" : "too faint to see from your sky";
+  return mag < L - 5 ? tl("very bright", "sehr hell") : mag < L - 3 ? tl("bright", "hell") : mag < L - 1.5 ? tl("easy to see", "gut zu sehen")
+    : mag < L ? tl("faint, but visible from your sky", "schwach, aber an deinem Himmel sichtbar") : tl("too faint to see from your sky", "zu schwach für deinen Himmel");
 }
 function enu(az, el) { az *= D2R; el *= D2R; return [Math.sin(az) * Math.cos(el), Math.cos(az) * Math.cos(el), Math.sin(el)]; }
 
@@ -249,11 +249,11 @@ function orbitInfo(sat) {
   let cls, short, note;
   if (period > 1300 && period < 1600 && e < 0.1) {
     short = "GEO";
-    cls = inc < 3 ? "Geostationary orbit (GEO)" : "Geosynchronous orbit (GEO)";
-    note = inc < 3 ? "Hangs almost still in the sky" : "Drifts in a slow figure-8 each day";
-  } else if (apo < 2000) { short = "LEO"; cls = "Low Earth orbit (LEO)"; note = "Crosses the sky in a few minutes"; }
-  else if (e > 0.25) { short = "HEO"; cls = "Highly elliptical orbit (HEO)"; note = "Swings far out, then dips close to Earth"; }
-  else { short = "MEO"; cls = "Medium Earth orbit (MEO)"; note = "Moves slowly, over hours"; }
+    cls = inc < 3 ? tl("Geostationary orbit (GEO)", "Geostationäre Bahn (GEO)") : tl("Geosynchronous orbit (GEO)", "Geosynchrone Bahn (GEO)");
+    note = inc < 3 ? tl("Hangs almost still in the sky", "Steht fast still am Himmel") : tl("Drifts in a slow figure-8 each day", "Zieht jeden Tag langsam eine Acht");
+  } else if (apo < 2000) { short = "LEO"; cls = tl("Low Earth orbit (LEO)", "Niedrige Erdumlaufbahn (LEO)"); note = tl("Crosses the sky in a few minutes", "Überquert den Himmel in wenigen Minuten"); }
+  else if (e > 0.25) { short = "HEO"; cls = tl("Highly elliptical orbit (HEO)", "Stark elliptische Bahn (HEO)"); note = tl("Swings far out, then dips close to Earth", "Schwingt weit hinaus und kommt dann nah an die Erde heran"); }
+  else { short = "MEO"; cls = tl("Medium Earth orbit (MEO)", "Mittlere Erdumlaufbahn (MEO)"); note = tl("Moves slowly, over hours", "Bewegt sich langsam, über Stunden"); }
   return { period, apo, peri, inc, e, cls, short, note, perDay: 1440 / period };
 }
 function tleEpoch(l1) {
@@ -268,8 +268,8 @@ function intlDesig(l1) {
 }
 function operatorOf(sat) {
   for (const [re, op, role] of CODES.OPERATORS) if (re.test(sat.nameU)) return { op, role };
-  if (/ R\/B/.test(sat.nameU)) return { op: null, role: "Rocket stage" };
-  if (/ DEB/.test(sat.nameU)) return { op: null, role: "Debris" };
+  if (/ R\/B/.test(sat.nameU)) return { op: null, role: tl("Rocket stage", "Raketenstufe") };
+  if (/ DEB/.test(sat.nameU)) return { op: null, role: tl("Debris", "Trümmerteil") };
   return null;
 }
 
@@ -287,5 +287,7 @@ async function catalog(sat) {
   catMem.set(sat.id, keep); store.set("cat_" + sat.id, keep);
   return keep;
 }
-const STATUS = { "+": "Operational", "-": "Not operational", "P": "Partially operational", "B": "Backup / standby", "S": "Spare", "X": "Extended mission", "D": "Decayed", "?": "Unknown" };
+const STATUS = tl(
+  { "+": "Operational", "-": "Not operational", "P": "Partially operational", "B": "Backup / standby", "S": "Spare", "X": "Extended mission", "D": "Decayed", "?": "Unknown" },
+  { "+": "In Betrieb", "-": "Außer Betrieb", "P": "Teilweise in Betrieb", "B": "Reserve / Bereitschaft", "S": "Ersatz", "X": "Verlängerte Mission", "D": "Verglüht", "?": "Unbekannt" });
 const ownerName = c => c && c.owner ? (CODES.OWNERS[c.owner] || c.owner) : null;

@@ -1,8 +1,9 @@
 // A small 3D viewer for the satellite details panel: simplified models built from boxes, cylinders and
 // panels, drawn on a 2D canvas (flat shading, back faces hidden, far faces first). Drag to turn the
 // model; it spins slowly on its own when left alone. Sizes are in metres.
-// Real models (NASA publishes a few) are several megabytes each and need a full 3D library, which is
-// too heavy for an offline phone app, so each kind of satellite gets a simplified shape instead.
+// Real models (NASA publishes a few) need a full 3D library and megabytes of download, so every kind
+// of satellite gets a simplified shape here, and NASA's ISS and Hubble models are offered on request
+// (js/model-detail.js).
 (() => {
   "use strict";
   const COLORS = {
@@ -49,10 +50,10 @@
 
   // ---- the models ----
   const MODELS = {
-    cube: { title: "Placeholder", size: "No model for this type yet", build: () => box([0, 0, 0], [1, 1, 1], COLORS.gold) },
+    cube: { title: tl("Placeholder", "Platzhalter"), size: tl("No model for this type yet", "Noch kein Modell für diese Art"), build: () => box([0, 0, 0], [1, 1, 1], COLORS.gold) },
     iss: {
-      title: "International Space Station",
-      size: "About 109 m across its main truss, 73 m long",
+      title: tl("International Space Station", "Internationale Raumstation"),
+      size: tl("About 109 m across its main truss, 73 m long", "Etwa 109 m breit über die Hauptstruktur, 73 m lang"),
       build: () => {
         const parts = [box([0, 0, 0], [100, 1.6, 1.6], COLORS.grey)];
         for (const x of [-46, -32, 32, 46]) for (const z of [-18.5, 18.5]) parts.push(panel([x, 0, z], [11.6, 0.1, 35]));
@@ -64,8 +65,8 @@
       },
     },
     css: {
-      title: "Tiangong space station",
-      size: "About 55 m wide with solar arrays; modules about 17 m long",
+      title: tl("Tiangong space station", "Raumstation Tiangong"),
+      size: tl("About 55 m wide with solar arrays; modules about 17 m long", "Etwa 55 m breit mit Solarflächen; Module etwa 17 m lang"),
       build: () => join(
         cylinder([0, 0, 0], "z", 2.1, 16.6, COLORS.white),
         cylinder([9, 0, 6], "x", 2.1, 17.9, COLORS.white), cylinder([-9, 0, 6], "x", 2.1, 17.9, COLORS.white),
@@ -73,8 +74,8 @@
         panel([0, 0, -4], [24, 0.06, 3.5])),
     },
     hubble: {
-      title: "Hubble Space Telescope",
-      size: "13.2 m long, 4.2 m across",
+      title: tl("Hubble Space Telescope", "Hubble-Weltraumteleskop"),
+      size: tl("13.2 m long, 4.2 m across", "13,2 m lang, 4,2 m Durchmesser"),
       build: () => join(
         cylinder([0, 0, 0], "x", 2.1, 13.2, COLORS.silver, 2.1, 20),
         cylinder([7.4, 0, 0], "x", 2.2, 1.6, COLORS.dark, 2.2, 20),
@@ -82,58 +83,58 @@
         dish([-2, 2.8, 0], 0.7)),
     },
     starlinkOne: {
-      title: "Starlink (version 1)",
-      size: "Body about 2.8 × 1.4 m, one solar array about 8 m long",
+      title: tl("Starlink (version 1)", "Starlink (Version 1)"),
+      size: tl("Body about 2.8 × 1.4 m, one solar array about 8 m long", "Körper etwa 2,8 × 1,4 m, eine Solarfläche etwa 8 m lang"),
       build: () => join(box([0, 0, 0], [2.8, 0.2, 1.4], COLORS.dark), box([0, 0.35, 0], [0.12, 0.5, 0.12], COLORS.grey), panel([4.6, 0.6, 0], [8.1, 0.05, 2.8])),
     },
     starlinkTwo: {
       title: "Starlink V2 Mini",
-      size: "Body about 4.1 × 2.7 m, about 30 m across with both solar arrays",
+      size: tl("Body about 4.1 × 2.7 m, about 30 m across with both solar arrays", "Körper etwa 4,1 × 2,7 m, mit beiden Solarflächen etwa 30 m breit"),
       build: () => join(box([0, 0, 0], [4.1, 0.3, 2.7], COLORS.dark), wings(12.8, 4.1, 1.2, 0.5)),
     },
     bluebird: {
       title: "AST SpaceMobile BlueBird",
-      size: "Antenna array about 8 × 8 m, larger on the newest ones",
+      size: tl("Antenna array about 8 × 8 m, larger on the newest ones", "Antennenfeld etwa 8 × 8 m, bei den neuesten größer"),
       build: () => join(panel([0, 0, 0], [8, 0.12, 8], COLORS.dark), box([0, -0.7, 0], [1.2, 1.2, 1.2], COLORS.gold)),
     },
     cubesat: {
-      title: "CubeSat (small satellite)",
-      size: "About 10 × 10 × 34 cm, the size of a loaf of bread",
+      title: tl("CubeSat (small satellite)", "CubeSat (Kleinsatellit)"),
+      size: tl("About 10 × 10 × 34 cm, the size of a loaf of bread", "Etwa 10 × 10 × 34 cm, so groß wie ein Brotlaib"),
       build: () => join(box([0, 0, 0], [0.1, 0.34, 0.1], COLORS.silver), panel([0.11, 0, 0], [0.12, 0.34, 0.01]), panel([-0.11, 0, 0], [0.12, 0.34, 0.01])),
     },
     rocket: {
-      title: "Rocket stage",
-      size: "Typically 6–12 m long and 2.5–4 m across",
+      title: tl("Rocket stage", "Raketenstufe"),
+      size: tl("Typically 6–12 m long and 2.5–4 m across", "Meist 6–12 m lang und 2,5–4 m Durchmesser"),
       build: () => join(cylinder([0, 0, 0], "x", 1.6, 9, COLORS.white, 1.6, 18), cylinder([-5.3, 0, 0], "x", 1.1, 1.6, COLORS.nozzle, 0.5, 14),
                         box([4.6, 0, 0], [0.3, 3.0, 0.3], COLORS.grey)),
     },
     debris: {
-      title: "Debris",
-      size: "Fragments, usually under a metre",
+      title: tl("Debris", "Trümmerteil"),
+      size: tl("Fragments, usually under a metre", "Bruchstücke, meist unter einem Meter"),
       build: () => {
         const v = [[0, 0.5, 0], [0.45, -0.2, 0.2], [-0.35, -0.25, 0.3], [0.05, -0.15, -0.45]];
         return [[0, 2, 1], [0, 1, 3], [0, 3, 2], [1, 2, 3]].map(f => ({ p: f.map(i => v[i]), c: COLORS.grey }));
       },
     },
     geo: {
-      title: "Communications satellite (geostationary)",
-      size: "Body about 3 × 4 m, 30–40 m across with solar arrays",
+      title: tl("Communications satellite (geostationary)", "Kommunikationssatellit (geostationär)"),
+      size: tl("Body about 3 × 4 m, 30–40 m across with solar arrays", "Körper etwa 3 × 4 m, mit Solarflächen 30–40 m breit"),
       build: () => join(box([0, 0, 0], [2.6, 3.6, 2.6], COLORS.gold), wings(13, 2.6, 1.6), dish([0, 0.6, 1.9], 1.2), dish([0, -0.9, 1.9], 0.8)),
     },
     gnss: {
-      title: "Navigation satellite",
-      size: "Body about 2 × 2 m, about 18 m across with solar arrays",
+      title: tl("Navigation satellite", "Navigationssatellit"),
+      size: tl("Body about 2 × 2 m, about 18 m across with solar arrays", "Körper etwa 2 × 2 m, mit Solarflächen etwa 18 m breit"),
       build: () => join(box([0, 0, 0], [1.8, 2.2, 1.8], COLORS.gold), wings(6.5, 2, 1.2), box([0, 0, 1.05], [1.2, 1.2, 0.3], COLORS.white)),
     },
     weather: {
-      title: "Weather or Earth-observation satellite",
-      size: "Body about 4 m long, one large solar array",
+      title: tl("Weather or Earth-observation satellite", "Wetter- oder Erdbeobachtungssatellit"),
+      size: tl("Body about 4 m long, one large solar array", "Körper etwa 4 m lang, eine große Solarfläche"),
       build: () => join(box([0, 0, 0], [4.2, 1.6, 1.6], COLORS.gold), panel([0, 0, 4.6], [6, 0.05, 6]), box([0, 0, 1.3], [0.1, 0.1, 1], COLORS.grey),
                         box([1.6, -1, 0], [0.8, 0.4, 0.8], COLORS.white)),
     },
     generic: {
-      title: "Satellite",
-      size: "Typical small satellite: body 1–2 m, a few metres across with solar arrays",
+      title: tl("Satellite", "Satellit"),
+      size: tl("Typical small satellite: body 1–2 m, a few metres across with solar arrays", "Typischer kleiner Satellit: Körper 1–2 m, mit Solarflächen einige Meter breit"),
       build: () => join(box([0, 0, 0], [1.4, 1.4, 1.4], COLORS.gold), wings(3.5, 1.3, 0.9), dish([0, 0, 0.85], 0.45)),
     },
   };
@@ -231,5 +232,5 @@
   }
   function stop() { cancelAnimationFrame(view.raf); view.raf = 0; }
 
-  window.Model3D = { open, stop, pick, models: Object.keys(MODELS) };
+  window.Model3D = { open, stop, pick, titleOf: key => (MODELS[key] || MODELS.cube).title, models: Object.keys(MODELS) };
 })();
