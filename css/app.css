@@ -189,8 +189,13 @@ button.passrow { width: 100%; text-align: left; }
 
 .feedback { display: flex; align-items: center; gap: 12px; margin-top: 4px; font: calc(11px * var(--text)) var(--font-data); color: var(--dim); }
 .card .feedback button { color: var(--target); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; letter-spacing: .04em; }
-.camfab { position: fixed; right: 16px; top: 50%; transform: translateY(-50%); }
-.camfab[aria-pressed="true"] { border-color: var(--target); color: var(--target); }
+/* view buttons on the right edge: follow the phone / drag the sky, and the camera picture */
+.sidebtns { position: fixed; right: 16px; top: 50%; transform: translateY(-50%); display: grid; gap: 10px; }
+.sidebtns .iconbtn[aria-pressed="true"] { border-color: var(--target); color: var(--target); }
+#motionBtn svg { width: 18px; height: 18px; display: block; }
+#motionBtn .slash { display: none; }
+#motionBtn[aria-pressed="false"] { color: var(--dim); }
+#motionBtn[aria-pressed="false"] .slash { display: inline; }
 .row.launch .nm { white-space: normal; }
 #modelDetailBtn { margin-top: 4px; }
 @media (max-width: 400px) { .tab { padding: 6px 7px; letter-spacing: .02em; } .sheet-head { gap: 4px; } }

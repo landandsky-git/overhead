@@ -89,9 +89,9 @@ const GUIDE = [
   { title: tl("Saw something move?", "Etwas Bewegtes gesehen?"), spot: ["grab"],
     text: tl("Open the list and tap “Saw something moving?”. Point where you saw it, and the app finds out which satellite it was.",
              "Öffne die Liste und tippe auf „Etwas Bewegtes gesehen?“. Zeig dorthin, wo du es gesehen hast, und die App findet heraus, welcher Satellit es war.") },
-  { title: tl("A few more buttons", "Noch ein paar Tasten"), spot: ["timeBtn", "redBtn", "setBtn", "camBtn"],
-    text: tl("◷ shows the sky up to 12 hours ahead. ◉ puts the camera picture behind it. R turns the screen red (tap again for dimmer) so your eyes stay used to the dark. ⚙ has your location, how dark your sky is, and this guide.",
-             "◷ zeigt den Himmel bis zu 12 Stunden im Voraus. ◉ legt das Kamerabild dahinter. R färbt den Bildschirm rot (noch einmal tippen für dunkler), damit deine Augen an die Dunkelheit gewöhnt bleiben. Unter ⚙ findest du deinen Standort, wie dunkel dein Himmel ist, und diese Anleitung.") },
+  { title: tl("A few more buttons", "Noch ein paar Tasten"), spot: ["motionBtn", "camBtn", "timeBtn", "redBtn", "setBtn"],
+    text: tl("The phone button on the right switches between following your phone and dragging the sky with a finger, and ◉ puts the camera picture behind the sky. ◷ shows the sky up to 12 hours ahead. R turns the screen red (tap again for dimmer) so your eyes stay used to the dark. ⚙ has your location, how dark your sky is, and this guide.",
+             "Die Handy-Taste rechts schaltet um zwischen „dem Handy folgen“ und „den Himmel mit dem Finger ziehen“, und ◉ legt das Kamerabild hinter den Himmel. ◷ zeigt den Himmel bis zu 12 Stunden im Voraus. R färbt den Bildschirm rot (noch einmal tippen für dunkler), damit deine Augen an die Dunkelheit gewöhnt bleiben. Unter ⚙ findest du deinen Standort, wie dunkel dein Himmel ist, und diese Anleitung.") },
 ];
 let guideAt = 0;
 function showGuideStep() {

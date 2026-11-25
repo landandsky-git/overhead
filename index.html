@@ -38,7 +38,14 @@
 <div class="hint" id="hint" role="status"></div>
 <div class="readout" id="readout"></div>
 <button class="zoompill" id="zoomPill" hidden></button>
-<button class="iconbtn camfab" id="camBtn" aria-pressed="false" title="Show the camera picture behind the sky" aria-label="Camera view" data-de-title="Kamerabild hinter dem Himmel zeigen" data-de-aria-label="Kameraansicht" hidden>◉</button>
+<div class="sidebtns">
+  <button class="iconbtn" id="motionBtn" aria-pressed="false" aria-label="Follow the phone's motion" data-de-aria-label="Der Bewegung des Handys folgen" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8.5" y="4" width="7" height="16" rx="1.6"/><path d="M5.2 8.6a5.5 5.5 0 0 0 0 6.8M18.8 8.6a5.5 5.5 0 0 1 0 6.8"/><path class="slash" d="M4.5 19.5 19.5 4.5"/>
+    </svg>
+  </button>
+  <button class="iconbtn" id="camBtn" aria-pressed="false" title="Show the camera picture behind the sky" aria-label="Camera view" data-de-title="Kamerabild hinter dem Himmel zeigen" data-de-aria-label="Kameraansicht" hidden>◉</button>
+</div>
 
 <div class="card" id="card" hidden>
   <div class="card-top"><h3 id="cardName"></h3><button class="favbtn" id="cardFav" aria-pressed="false" aria-label="Favorite">☆</button><span class="card-acts"><button id="cardShare" data-de="Teilen" hidden>Share</button><button id="cardClose" data-de="Schließen">Clear</button></span></div>
@@ -100,7 +107,7 @@
     <p data-de="Richte dein Handy auf den Nachthimmel und sieh, welche Satelliten dort sind. Verfolgt rund 17.000 Satelliten, auch Starlink. Goldene Punkte werden von der Sonne angestrahlt, und je größer der Punkt, desto heller wirkt der Satellit.">Point your phone at the night sky to see which satellites are there. Tracks about 17,000 satellites, including Starlink. Gold dots are lit by the sun, and the bigger the dot, the brighter the satellite looks.</p>
     <button class="primary" id="startBtn">Start</button>
     <button class="secondary" id="dragBtn" data-de="Ohne Sensoren nutzen (Himmel ziehen)">Use without sensors (drag to look)</button>
-    <p class="small" data-de="Braucht Zugriff auf Standort und Bewegungssensoren. Funktioniert am besten draußen, fern von Metall und Magneten, nachdem du das Handy in Form einer Acht geschwenkt hast, damit sich der Kompass einpendelt.">Needs location and motion access. Works best outdoors, away from metal and magnets, after waving the phone in a figure-8 to settle the compass.</p>
+    <p class="small" data-de="Braucht Zugriff auf Standort und Bewegungssensoren. Funktioniert am besten draußen, fern von Metall und Magneten, nachdem du das Handy in Form einer Acht geschwenkt hast, damit sich der Kompass einpendelt. Mit der Handy-Taste rechts kannst du jederzeit umschalten.">Needs location and motion access. Works best outdoors, away from metal and magnets, after waving the phone in a figure-8 to settle the compass. You can switch any time with the phone button on the right.</p>
     <p class="err" id="introErr" role="alert" hidden></p>
   </div>
 </div>

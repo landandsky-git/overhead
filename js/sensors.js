@@ -72,6 +72,7 @@ function learnOffset(est, k) {
 function axisHeading(R, useTop) { return (useTop ? Math.atan2(R[1], R[4]) : Math.atan2(-R[2], -R[5])) * R2D; }
 
 function applyAttitude(R, offset) {
+  if (S.mode !== "sensor") return;   // dragging the sky: the phone's turns are ignored (north is still learned)
   const d = (offset + S.corr) * D2R, c = Math.cos(d), s = Math.sin(d);
   // turn the world clockwise by d about the vertical: east' = east*c + north*s, north' = -east*s + north*c
   S.lastSensor = Date.now();
@@ -110,19 +111,50 @@ function onAbsolute(e) {
 async function startSensors() {
   if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
     const p = await DeviceOrientationEvent.requestPermission();
-    if (p !== "granted") throw new Error(tl("Motion access was denied. Allow it in Safari settings for this site, then reload.",
-                                            "Zugriff auf die Bewegungssensoren verweigert. Erlaube ihn in den Safari-Einstellungen für diese Seite und lade neu."));
+    if (p !== "granted") throw new Error(tl("Motion access was denied. Allow motion sensors for this site in your browser settings, then try again.",
+                                            "Zugriff auf die Bewegungssensoren verweigert. Erlaube sie für diese Seite in den Browser-Einstellungen und versuche es dann noch einmal."));
   }
-  window.addEventListener("deviceorientationabsolute", onAbsolute);
-  window.addEventListener("deviceorientation", onRelative);
+  if (!SENS.listening) {
+    window.addEventListener("deviceorientationabsolute", onAbsolute);
+    window.addEventListener("deviceorientation", onRelative);
+    SENS.listening = true;
+  }
   try { await screen.orientation?.lock?.("portrait"); } catch {}   // works for the installed app on Android
   S.mode = "sensor";
   setTimeout(() => {
-    if (S.anyEvent) return;
-    S.mode = "drag"; $("camBtn").hidden = true;
+    if (S.anyEvent || S.mode !== "sensor") return;
+    S.mode = "drag"; updateModeUI();
     showHint(tl("No motion sensors found. Drag the sky to look around.", "Keine Bewegungssensoren gefunden. Zieh den Himmel, um dich umzusehen."), 5000);
   }, 2500);
 }
+
+// The phone button on the right switches between following the phone and dragging the sky with a
+// finger, at any time. Switching to dragging keeps the view where the phone pointed; switching back
+// jumps to where it points now. On iPhones the first switch on asks for motion access.
+async function setMotion(on) {
+  if (on === (S.mode === "sensor")) return;
+  if (on) {
+    try { await startSensors(); }
+    catch (e) { showHint(e.message, 6000); updateModeUI(); return; }
+    SENS.started = false;
+    showHint(tl("Following your phone. Point it at the sky.", "Folgt deinem Handy. Richte es auf den Himmel."), 4000);
+  } else {
+    if (S.R) { S.view.az = viewAz(S.R); S.view.el = Math.max(-10, Math.min(90, Math.asin(Math.max(-1, Math.min(1, -S.R[8]))) * R2D)); }
+    if (CAM.on) await toggleCamera();   // the camera picture only lines up while following the phone
+    if (ALIGN.on) closeAlign();
+    S.mode = "drag";
+    showHint(tl("Drag the sky with your finger to look around.", "Zieh den Himmel mit dem Finger, um dich umzusehen."), 4000);
+  }
+  updateModeUI();
+}
+function updateModeUI() {
+  const on = S.mode === "sensor", b = $("motionBtn");
+  b.setAttribute("aria-pressed", on);
+  b.title = on ? tl("Following your phone: tap to drag the sky instead", "Folgt deinem Handy: tippen, um stattdessen den Himmel zu ziehen")
+               : tl("Dragging the sky: tap to follow your phone", "Himmel ziehen: tippen, um deinem Handy zu folgen");
+  $("camBtn").hidden = !on;   // the camera view follows the phone too
+}
+$("motionBtn").addEventListener("click", () => setMotion(S.mode !== "sensor"));
 
 function getLocation() {
   return new Promise((resolve, reject) => {

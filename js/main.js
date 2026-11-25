@@ -8,7 +8,7 @@ async function begin(mode) {
   try { if (mode === "sensor") await startSensors(); else S.mode = "drag"; }
   catch (e) { $("introErr").textContent = e.message; $("introErr").hidden = false; return; }
   $("intro").hidden = true; closeLayer($("intro"));
-  $("camBtn").hidden = S.mode !== "sensor";   // the camera view follows the phone, so it needs the sensors
+  $("motionBtn").hidden = false; updateModeUI();   // switch between following the phone and dragging (sensors.js)
   try { await navigator.wakeLock?.request("screen"); } catch {}
   // A town picked by hand is kept; otherwise refresh from GPS.
   if (!S.loc || !S.loc.src || S.loc.src === "gps") {
