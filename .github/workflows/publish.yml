@@ -32,12 +32,10 @@ jobs:
       - name: Run the automatic checks
         run: node tests/run-node.js
 
-  publish:
+  # Builds the site (app files plus fresh data) and uploads it for the deploy job below.
+  build:
     needs: checks
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
 
@@ -120,5 +118,15 @@ jobs:
         with:
           path: site
 
+  # Publishes the uploaded site. A job of its own (GitHub's usual layout for Pages): deploying in
+  # the same job straight after the upload sometimes failed with "No artifacts named github-pages",
+  # because GitHub hadn't finished registering the upload yet.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v5
