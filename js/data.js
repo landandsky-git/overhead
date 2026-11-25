@@ -118,7 +118,7 @@ async function loadSats(force) {
   worker.postMessage({ type: "reset" });
   S.sats = []; S.byId = new Map(); S.counts = { bright: 0, starlink: 0, other: 0 }; S.trains = new Map();
   S.now = []; S.nowMap = new Map(); S.passes = null; S.passesAt = 0; paths.clear();
-  S.loading = tl("Loading satellites…", "Satelliten werden geladen…"); S.busy = true; updateStatus();
+  S.loading = tl("Loading satellites…", "Satelliten werden geladen…", "Завантаження супутників…"); S.busy = true; updateStatus();
   S.mags = await getMags(force);
   if (job !== loadJob) return;
   const times = [];
@@ -137,7 +137,7 @@ async function loadSats(force) {
 // Starlink and every other active satellite: one big list, added after the bright ones.
 async function loadActive(force) {
   const job = loadJob;
-  S.loading = tl("Loading Starlink and other satellites…", "Starlink und weitere Satelliten werden geladen…"); S.busy = true; updateStatus(); renderSheet(); updateCard();
+  S.loading = tl("Loading Starlink and other satellites…", "Starlink und weitere Satelliten werden geladen…", "Завантаження Starlink та інших супутників…"); S.busy = true; updateStatus(); renderSheet(); updateCard();
   lastRefusal = null;
   const act = await getGroup("active", force);
   if (job !== loadJob) return;
@@ -146,12 +146,14 @@ async function loadActive(force) {
   S.tleTime = S.times.length ? Math.min(...S.times) : 0;
   const ageDays = act ? (Date.now() - act.time) / 86400e3 : 0;
   S.loading = !act ? (lastRefusal === "wait"
-      ? tl("Starlink and other satellites will load within 2 hours (CelesTrak download limit)", "Starlink und weitere Satelliten laden innerhalb von 2 Stunden (Download-Limit von CelesTrak)")
-      : tl("Showing bright satellites only (couldn't download the full list)", "Nur helle Satelliten (die vollständige Liste ließ sich nicht laden)"))
+      ? tl("Starlink and other satellites will load within 2 hours (CelesTrak download limit)", "Starlink und weitere Satelliten laden innerhalb von 2 Stunden (Download-Limit von CelesTrak)", "Starlink та інші супутники завантажаться протягом 2 годин (ліміт завантажень CelesTrak)")
+      : tl("Showing bright satellites only (couldn't download the full list)", "Nur helle Satelliten (die vollständige Liste ließ sich nicht laden)", "Лише яскраві супутники (повний список не вдалося завантажити)"))
     : act.stale && ageDays > 10 ? tl(`No connection. The saved satellite data is ${Math.round(ageDays)} days old, so positions may be off by several degrees. Connect to update.`,
-                                     `Keine Verbindung. Die gespeicherten Satellitendaten sind ${Math.round(ageDays)} Tage alt, die Positionen können daher um mehrere Grad abweichen. Verbinde dich zum Aktualisieren.`)
+                                     `Keine Verbindung. Die gespeicherten Satellitendaten sind ${Math.round(ageDays)} Tage alt, die Positionen können daher um mehrere Grad abweichen. Verbinde dich zum Aktualisieren.`,
+                                     `Немає зв’язку. Збереженим даним про супутники ${Math.round(ageDays)} ${ukPlural(Math.round(ageDays), "день", "дні", "днів")}, тож положення можуть відхилятися на кілька градусів. Підключися, щоб оновити.`)
     : act.stale && Date.now() - act.time > TLE_MAX_AGE ? tl(`No connection. Using satellite data saved ${fmtDate(new Date(act.time))}, ${fmtTime(act.time)}. It stays accurate for about a week.`,
-                                                            `Keine Verbindung. Die App nutzt die Satellitendaten vom ${fmtDate(new Date(act.time))}, ${fmtTime(act.time)} Uhr. Sie bleiben etwa eine Woche lang genau.`)
+                                                            `Keine Verbindung. Die App nutzt die Satellitendaten vom ${fmtDate(new Date(act.time))}, ${fmtTime(act.time)} Uhr. Sie bleiben etwa eine Woche lang genau.`,
+                                                            `Немає зв’язку. Використовуються дані про супутники від ${fmtDate(new Date(act.time))}, ${fmtTime(act.time)}. Вони лишаються точними приблизно тиждень.`)
     : "";
   updateStatus(); updateTleInfo(); renderSheet(); updateCard();
 }
@@ -203,10 +205,10 @@ function starlinkMag(sat) {
   return num < 1500 ? 5.1 : num < 2000 ? 6.8 : num < 5000 ? 6.0 : 7.5;
 }
 const MAG_SOURCE = {
-  measured: tl("Measured, from Mike McCants' satellite brightness catalog", "Gemessen, aus dem Helligkeitskatalog von Mike McCants"),
-  family: tl("From published measurements of this kind of satellite", "Aus veröffentlichten Messungen dieser Art von Satellit"),
-  radar: tl("Estimated from its radar size", "Geschätzt aus seiner Radargröße"),
-  type: tl("Rough estimate for this type of object", "Grobe Schätzung für diese Art von Objekt"),
+  measured: tl("Measured, from Mike McCants' satellite brightness catalog", "Gemessen, aus dem Helligkeitskatalog von Mike McCants", "Виміряно, з каталогу яскравості супутників Майка Маккантса"),
+  family: tl("From published measurements of this kind of satellite", "Aus veröffentlichten Messungen dieser Art von Satellit", "З опублікованих вимірювань супутників цього типу"),
+  radar: tl("Estimated from its radar size", "Geschätzt aus seiner Radargröße", "Оцінено за його радарним розміром"),
+  type: tl("Rough estimate for this type of object", "Grobe Schätzung für diese Art von Objekt", "Груба оцінка для об’єкта цього типу"),
 };
 
 // The brightness table published next to the app (data/mags.json, rebuilt daily by GitHub).
@@ -227,6 +229,6 @@ async function getMags(force) {
 }
 
 function prettyName(n) {
-  const fixes = { "ISS (ZARYA)": "ISS", "CSS (TIANHE)": "Tiangong (CSS)", "HST": tl("Hubble Space Telescope", "Hubble-Weltraumteleskop") };
+  const fixes = { "ISS (ZARYA)": "ISS", "CSS (TIANHE)": "Tiangong (CSS)", "HST": tl("Hubble Space Telescope", "Hubble-Weltraumteleskop", "Космічний телескоп «Габбл»") };
   return fixes[n] || n.replace(/\s+/g, " ");
 }

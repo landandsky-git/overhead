@@ -15,20 +15,22 @@ function loadSkyline() {
 }
 
 async function openHorizon() {
-  if (!S.loc) { showHint(tl("Set your location first.", "Lege zuerst deinen Standort fest."), 4000); return; }
+  if (!S.loc) { showHint(tl("Set your location first.", "Lege zuerst deinen Standort fest.", "Спершу вкажи своє місцезнаходження."), 4000); return; }
   if (S.mode !== "sensor" || !S.R) {
     showHint(tl("Recording your horizon needs the motion sensors. Tap the phone button on the right to follow your phone first.",
-                "Zum Aufzeichnen des Horizonts braucht die App die Bewegungssensoren. Tippe zuerst rechts auf die Handy-Taste."), 7000);
+                "Zum Aufzeichnen des Horizonts braucht die App die Bewegungssensoren. Tippe zuerst rechts auf die Handy-Taste.",
+                "Щоб записати горизонт, потрібні датчики руху. Спершу торкнися кнопки з телефоном праворуч, щоб небо стежило за телефоном."), 7000);
     return;
   }
   HZ.on = true; HZ.heights = new Array(72).fill(null); HZ.last = null;
   $("hzBar").hidden = false; $("sheet").hidden = true; $("card").hidden = true;
-  $("hzHelp").textContent = tl("Starting the camera…", "Kamera wird gestartet…");
+  $("hzHelp").textContent = tl("Starting the camera…", "Kamera wird gestartet…", "Запуск камери…");
   updateHzProgress();
   HZ.camera = await startCamera();
   if (!HZ.on) return;   // cancelled meanwhile
   $("hzHelp").textContent = tl("Point the crosshair at the tops of the trees and rooftops, then turn slowly all the way round, following them. Tap Save when you're back where you started.",
-                               "Richte das Fadenkreuz auf die Oberkante von Bäumen und Dächern und dreh dich dann langsam einmal ganz herum, immer an ihr entlang. Tippe auf Speichern, wenn du wieder am Anfang bist.");
+                               "Richte das Fadenkreuz auf die Oberkante von Bäumen und Dächern und dreh dich dann langsam einmal ganz herum, immer an ihr entlang. Tippe auf Speichern, wenn du wieder am Anfang bist.",
+                               "Наведи перехрестя на верхівки дерев і дахів і повільно обернися по колу, ведучи ним уздовж них. Коли повернешся до початкової точки, торкнися «Зберегти».");
   HZ.timer = setInterval(sampleHorizon, 100);
 }
 // Where the crosshair points goes into the 5° step of that direction. Turning quickly skips steps,
@@ -50,12 +52,12 @@ function sampleHorizon() {
 function updateHzProgress() {
   const done = HZ.heights ? HZ.heights.filter(v => v != null).length : 0, pct = Math.round(done / 72 * 100);
   $("hzFill").style.width = pct + "%";
-  $("hzPct").textContent = tl(`${pct}% of the way round`, `${pct} % der Runde`);
+  $("hzPct").textContent = tl(`${pct}% of the way round`, `${pct} % der Runde`, `${pct} % кола`);
 }
 function saveHorizon() {
   const h = HZ.heights, known = [];
   h.forEach((v, i) => { if (v != null) known.push(i); });
-  if (known.length < 18) { showHint(tl("Turn further round first: at least a quarter of the way.", "Dreh dich erst weiter herum, mindestens ein Viertel der Runde."), 5000); return; }
+  if (known.length < 18) { showHint(tl("Turn further round first: at least a quarter of the way.", "Dreh dich erst weiter herum, mindestens ein Viertel der Runde.", "Спершу обернися далі, принаймні на чверть кола."), 5000); return; }
   // directions you didn't point at are filled in between their recorded neighbours
   const out = h.map((v, i) => {
     if (v != null) return Math.round(v * 10) / 10;
@@ -66,7 +68,7 @@ function saveHorizon() {
   });
   store.set(skylineStoreKey(), out);
   closeHorizon(); loadSkyline(); updateCard();
-  showHint(tl("Your horizon is saved for this place. Passes behind trees and rooftops are now marked.", "Dein Horizont ist für diesen Ort gespeichert. Überflüge hinter Bäumen und Dächern werden jetzt markiert."), 6000);
+  showHint(tl("Your horizon is saved for this place. Passes behind trees and rooftops are now marked.", "Dein Horizont ist für diesen Ort gespeichert. Überflüge hinter Bäumen und Dächern werden jetzt markiert.", "Твій горизонт збережено для цього місця. Прольоти за деревами й дахами тепер позначено."), 6000);
 }
 function closeHorizon() {
   HZ.on = false; clearInterval(HZ.timer);
@@ -83,10 +85,12 @@ function clearHorizon() {
 function renderHorizonSetting() {
   $("hzNote").textContent = skyline
     ? tl("Recorded for this place. Satellites behind your trees and rooftops are dimmed, and passes that stay behind them are marked.",
-         "Für diesen Ort aufgezeichnet. Satelliten hinter deinen Bäumen und Dächern werden abgeblendet, und Überflüge, die dahinter bleiben, werden markiert.")
+         "Für diesen Ort aufgezeichnet. Satelliten hinter deinen Bäumen und Dächern werden abgeblendet, und Überflüge, die dahinter bleiben, werden markiert.",
+         "Записано для цього місця. Супутники за твоїми деревами й дахами притемнено, а прольоти, що лишаються за ними, позначено.")
     : tl("Not recorded, so the app assumes open sky down to the horizon. Record it once where you usually watch from.",
-         "Nicht aufgezeichnet, die App nimmt also freie Sicht bis zum Horizont an. Zeichne ihn einmal dort auf, wo du meistens beobachtest.");
-  $("hzRecord").textContent = skyline ? tl("Record it again", "Neu aufzeichnen") : tl("Record my horizon", "Meinen Horizont aufzeichnen");
+         "Nicht aufgezeichnet, die App nimmt also freie Sicht bis zum Horizont an. Zeichne ihn einmal dort auf, wo du meistens beobachtest.",
+         "Не записано, тож застосунок вважає небо відкритим до самого горизонту. Запиши його один раз там, звідки зазвичай спостерігаєш.");
+  $("hzRecord").textContent = skyline ? tl("Record it again", "Neu aufzeichnen", "Записати знову") : tl("Record my horizon", "Meinen Horizont aufzeichnen", "Записати мій горизонт");
   $("hzClear").hidden = !skyline;
 }
 

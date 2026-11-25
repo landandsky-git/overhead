@@ -10,13 +10,13 @@ function renderPlaces() {
   const list = places(), here = S.loc;
   $("placesList").innerHTML = list.map((p, i) => `<div class="saved${samePlace(p, here) ? " here" : ""}">
       <button class="saved-go" data-i="${i}" aria-current="${samePlace(p, here)}">${esc(p.name)}<span class="sub">${fmtLatLon(p.lat, p.lon)}</span></button>
-      <button class="saved-del" data-del="${i}" aria-label="${esc(tl(`Remove ${p.name}`, `${p.name} entfernen`))}">✕</button></div>`).join("");
+      <button class="saved-del" data-del="${i}" aria-label="${esc(tl(`Remove ${p.name}`, `${p.name} entfernen`, `Видалити ${p.name}`))}">✕</button></div>`).join("");
   $("savePlaceBtn").hidden = !here || list.some(p => samePlace(p, here)) || list.length >= PLACES_MAX;
 }
 $("savePlaceBtn").addEventListener("click", () => {
   if (!S.loc) return;
-  const suggestion = placeName(S.loc) || (S.loc.src === "gps" ? tl("GPS location", "GPS-Standort") : tl("My place", "Mein Ort"));
-  const name = (prompt(tl("A name for this place, e.g. Home or Dark-sky spot:", "Ein Name für diesen Ort, z. B. Zuhause oder Dunkler Platz:"), suggestion) || "").trim();
+  const suggestion = placeName(S.loc) || (S.loc.src === "gps" ? tl("GPS location", "GPS-Standort", "Місцезнаходження за GPS") : tl("My place", "Mein Ort", "Моє місце"));
+  const name = (prompt(tl("A name for this place, e.g. Home or Dark-sky spot:", "Ein Name für diesen Ort, z. B. Zuhause oder Dunkler Platz:", "Назва цього місця, наприклад Дім або Темне місце:"), suggestion) || "").trim();
   if (!name) return;
   const { lat, lon, h } = S.loc;
   store.set("places", [...places(), { name: name.slice(0, 40), lat, lon, h: h || 0 }]);
@@ -26,10 +26,10 @@ $("placesList").addEventListener("click", e => {
   const go = e.target.closest(".saved-go"), del = e.target.closest(".saved-del"), list = places();
   if (go) {
     const p = list[+go.dataset.i];
-    if (p) { setLocation({ lat: p.lat, lon: p.lon, h: p.h || 0, name: p.name, src: "saved" }); showHint(tl(`Now showing the sky over ${p.name}.`, `Jetzt mit dem Himmel über ${p.name}.`), 4000); }
+    if (p) { setLocation({ lat: p.lat, lon: p.lon, h: p.h || 0, name: p.name, src: "saved" }); showHint(tl(`Now showing the sky over ${p.name}.`, `Jetzt mit dem Himmel über ${p.name}.`, `Тепер показано небо для місця «${p.name}».`), 4000); }
   } else if (del) {
     const p = list[+del.dataset.del];
-    if (p && confirm(tl(`Remove “${p.name}” from your places?`, `„${p.name}“ aus deinen Orten entfernen?`))) { list.splice(+del.dataset.del, 1); store.set("places", list); renderPlaces(); }
+    if (p && confirm(tl(`Remove “${p.name}” from your places?`, `„${p.name}“ aus deinen Orten entfernen?`, `Видалити «${p.name}» з твоїх місць?`))) { list.splice(+del.dataset.del, 1); store.set("places", list); renderPlaces(); }
   }
 });
 
@@ -48,12 +48,15 @@ function renderInstall() {
   $("installBtn").hidden = !installEvent;
   $("installNote").textContent = installEvent
     ? tl("Install Overhead on this phone: it then opens full screen from your home screen and works without signal.",
-         "Installiere Overhead auf diesem Handy: Dann startet es im Vollbild vom Startbildschirm und funktioniert auch ohne Empfang.")
+         "Installiere Overhead auf diesem Handy: Dann startet es im Vollbild vom Startbildschirm und funktioniert auch ohne Empfang.",
+         "Установи Overhead на цей телефон: тоді він відкриватиметься на весь екран з головного екрана й працюватиме навіть без зв’язку.")
     : isIPhone()
     ? tl("In Safari, tap the Share button (the square with an arrow), then “Add to Home Screen”. Overhead then opens full screen, like an app, and works without signal.",
-         "Tippe in Safari auf die Teilen-Taste (das Quadrat mit dem Pfeil) und dann auf „Zum Home-Bildschirm“. Overhead startet dann im Vollbild wie eine App und funktioniert auch ohne Empfang.")
+         "Tippe in Safari auf die Teilen-Taste (das Quadrat mit dem Pfeil) und dann auf „Zum Home-Bildschirm“. Overhead startet dann im Vollbild wie eine App und funktioniert auch ohne Empfang.",
+         "У Safari торкнися кнопки «Поділитися» (квадрат зі стрілкою), а потім «На початковий екран». Тоді Overhead відкриватиметься на весь екран, як звичайний застосунок, і працюватиме навіть без зв’язку.")
     : tl("Open your browser's menu and choose “Install app” or “Add to Home screen”. Overhead then opens full screen, like an app, and works without signal.",
-         "Öffne das Menü deines Browsers und wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“. Overhead startet dann im Vollbild wie eine App und funktioniert auch ohne Empfang.");
+         "Öffne das Menü deines Browsers und wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“. Overhead startet dann im Vollbild wie eine App und funktioniert auch ohne Empfang.",
+         "Відкрий меню браузера й вибери «Установити додаток» або «Додати на головний екран». Тоді Overhead відкриватиметься на весь екран, як звичайний застосунок, і працюватиме навіть без зв’язку.");
 }
 $("installBtn").addEventListener("click", async () => {
   if (!installEvent) return;
@@ -66,5 +69,6 @@ function installTip() {
   const n = store.get("visits", 0) + 1;
   store.set("visits", n);
   if (n === 3 && !isInstalled()) setTimeout(() => showHint(tl("Tip: add Overhead to your home screen to use it like an app, even without signal. Settings → Install as an app.",
-                                                              "Tipp: Leg Overhead auf deinen Startbildschirm, dann nutzt du es wie eine App, auch ohne Empfang. Einstellungen → Als App installieren."), 9000), 6000);
+                                                              "Tipp: Leg Overhead auf deinen Startbildschirm, dann nutzt du es wie eine App, auch ohne Empfang. Einstellungen → Als App installieren.",
+                                                              "Порада: додай Overhead на головний екран, і ним можна буде користуватися як застосунком, навіть без зв’язку. Налаштування → Установити як застосунок."), 9000), 6000);
 }

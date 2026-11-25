@@ -40,9 +40,9 @@ function launchSighting(l) {
   const km = distanceKm(S.loc.lat, S.loc.lon, l.lat, l.lon), dist = fmtN(Math.round(km));
   if (km > 1500) return null;
   const c = conditionsAt(Date.parse(l.net));
-  if (c.sunEl > -4) return { km, text: tl(`${dist} km away, but in daylight or bright twilight here`, `${dist} km entfernt, aber hier bei Tageslicht oder heller Dämmerung`) };
+  if (c.sunEl > -4) return { km, text: tl(`${dist} km away, but in daylight or bright twilight here`, `${dist} km entfernt, aber hier bei Tageslicht oder heller Dämmerung`, `за ${dist} км, але тут ще день або світлі сутінки`) };
   const dir = compassName(bearing(S.loc.lat, S.loc.lon, l.lat, l.lon));
-  return { km, text: tl(`may be visible from you, low in the ${dir} (${dist} km away)`, `vielleicht bei dir zu sehen, tief im ${dir} (${dist} km entfernt)`), good: true };
+  return { km, text: tl(`may be visible from you, low in the ${dir} (${dist} km away)`, `vielleicht bei dir zu sehen, tief im ${dir} (${dist} km entfernt)`, `можливо, буде видно з твого місця, низько на ${dir} (за ${dist} км)`), good: true };
 }
 // Which station someone is on: Chinese astronauts are on Tiangong, everyone else on the ISS.
 const stationOf = p => /^(CNSA|CMSA)$/.test(p.agency || "") ? "Tiangong" : "ISS";
@@ -54,12 +54,19 @@ const MISSION_DE = {
   "Technology": "Technik", "Dedicated Rideshare": "Sammelstart", "Robotic Exploration": "Robotische Erkundung",
   "Space Science": "Weltraumforschung", "Lunar Exploration": "Mondforschung", "Unknown": "Unbekannt",
 };
-const missionType = t => t ? tl(t, MISSION_DE[t] || t) : "";
+const MISSION_UK = {
+  "Communications": "Зв’язок", "Earth Science": "Спостереження Землі", "Government/Top Secret": "Урядова/секретна",
+  "Human Exploration": "Пілотована місія", "Resupply": "Постачання", "Navigation": "Навігація", "Tourism": "Туризм",
+  "Test Flight": "Випробувальний політ", "Planetary Science": "Планетологія", "Astrophysics": "Астрофізика", "Heliophysics": "Геліофізика",
+  "Technology": "Технології", "Dedicated Rideshare": "Груповий запуск", "Robotic Exploration": "Автоматичні дослідження",
+  "Space Science": "Космічні дослідження", "Lunar Exploration": "Дослідження Місяця", "Unknown": "Невідомо",
+};
+const missionType = t => t ? tl(t, MISSION_DE[t] || t, MISSION_UK[t] || t) : "";
 
 function renderSpace(box) {
-  $("sheetTitle").textContent = tl("Space", "Raumfahrt");
+  $("sheetTitle").textContent = tl("Space", "Raumfahrt", "Космос");
   if (!space) {
-    box.innerHTML = `<div class="empty">${spaceLoading ? tl("Loading launches…", "Starts werden geladen…") : tl("Launch information isn't available (offline?).", "Keine Startdaten verfügbar (offline?).")}</div>`;
+    box.innerHTML = `<div class="empty">${spaceLoading ? tl("Loading launches…", "Starts werden geladen…", "Завантаження запусків…") : tl("Launch information isn't available (offline?).", "Keine Startdaten verfügbar (offline?).", "Дані про запуски недоступні (немає зв’язку?).")}</div>`;
     if (!spaceLoading) loadSpace();
     return;
   }
@@ -67,24 +74,24 @@ function renderSpace(box) {
   const launches = space.launches.filter(l => Date.parse(l.net) > now - 6 * 3600e3).slice(0, 12);
   const when = l => {
     const t = Date.parse(l.net), days = (t - now) / 86400e3;
-    if (t < now) return l.status === "Success" ? tl("launched", "gestartet") : l.status === "Failure" ? tl("failed", "gescheitert") : tl("just launched", "gerade gestartet");
+    if (t < now) return l.status === "Success" ? tl("launched", "gestartet", "запущено") : l.status === "Failure" ? tl("failed", "gescheitert", "невдача") : tl("just launched", "gerade gestartet", "щойно запущено");
     if (l.precision && !/second|minute|hour/i.test(l.precision)) return fmtDate(new Date(t));
     return days < 6 ? fmtDayTime(t) : fmtDate(new Date(t));
   };
   const rows = launches.map(l => {
     const [rocket, mission] = (l.name || "").split(" | "), seen = launchSighting(l);
     return `<div class="row launch ${seen && seen.good ? "lit" : ""}"><span class="dot"></span>
-      <span class="nm">${esc(mission || rocket)}<span class="sub tn-wrap">${esc(rocket)} · ${esc(l.provider || "")}${l.crewed ? tl(" · with crew", " · mit Besatzung") : ""}<br>${esc(l.place || l.pad || "")}${seen ? ` · ${esc(seen.text)}` : ""}</span></span>
+      <span class="nm">${esc(mission || rocket)}<span class="sub tn-wrap">${esc(rocket)} · ${esc(l.provider || "")}${l.crewed ? tl(" · with crew", " · mit Besatzung", " · з екіпажем") : ""}<br>${esc(l.place || l.pad || "")}${seen ? ` · ${esc(seen.text)}` : ""}</span></span>
       <span class="num">${esc(when(l))}<span class="sub">${esc(missionType(l.mission))}</span></span></div>`;
   }).join("");
   const byStation = {};
   for (const p of space.crew) (byStation[stationOf(p)] = byStation[stationOf(p)] || []).push(p);
   const crew = Object.entries(byStation).map(([st, people]) => `<div class="tn-line"><span class="tn-k">${st}</span><span>${people.map(p => {
     const days = p.since ? Math.max(1, Math.floor((now - Date.parse(p.since)) / 86400e3)) : null;
-    return `${esc(p.name)} <span class="small">(${esc(p.agency || p.country || "")}${days ? `, ${tl("day", "Tag")} ${days}` : ""})</span>`;
+    return `${esc(p.name)} <span class="small">(${esc(p.agency || p.country || "")}${days ? `, ${tl("day", "Tag", "день")} ${days}` : ""})</span>`;
   }).join(", ")}</span></div>`).join("");
-  const updated = space.updated ? tl(`updated ${fmtDate(new Date(space.updated))} ${fmtTime(Date.parse(space.updated))}`, `Stand ${fmtDate(new Date(space.updated))}, ${fmtTime(Date.parse(space.updated))}`) : tl("updated every few hours", "alle paar Stunden aktualisiert");
-  box.innerHTML = `<h4 class="tn-h">${tl(`In space now · ${space.crew.length} people`, `Jetzt im All · ${space.crew.length} Menschen`)}</h4><div class="tonight">${crew}</div>
-    <h4 class="tn-h">${tl("Next launches", "Nächste Starts")}</h4>${rows || `<div class="empty">${tl("No launches listed.", "Keine Starts angekündigt.")}</div>`}
-    <div class="note">${tl(`From The Space Devs' Launch Library 2, ${updated}. Times are planned and often slip.`, `Aus der Launch Library 2 von The Space Devs, ${updated}. Die Zeiten sind geplant und verschieben sich oft.`)}</div>`;
+  const updated = space.updated ? tl(`updated ${fmtDate(new Date(space.updated))} ${fmtTime(Date.parse(space.updated))}`, `Stand ${fmtDate(new Date(space.updated))}, ${fmtTime(Date.parse(space.updated))}`, `оновлено ${fmtDate(new Date(space.updated))} о ${fmtTime(Date.parse(space.updated))}`) : tl("updated every few hours", "alle paar Stunden aktualisiert", "оновлюється кожні кілька годин");
+  box.innerHTML = `<h4 class="tn-h">${tl(`In space now · ${space.crew.length} people`, `Jetzt im All · ${space.crew.length} Menschen`, `Зараз у космосі · ${space.crew.length} ${ukPlural(space.crew.length, "людина", "людини", "людей")}`)}</h4><div class="tonight">${crew}</div>
+    <h4 class="tn-h">${tl("Next launches", "Nächste Starts", "Найближчі запуски")}</h4>${rows || `<div class="empty">${tl("No launches listed.", "Keine Starts angekündigt.", "Запусків не заплановано.")}</div>`}
+    <div class="note">${tl(`From The Space Devs' Launch Library 2, ${updated}. Times are planned and often slip.`, `Aus der Launch Library 2 von The Space Devs, ${updated}. Die Zeiten sind geplant und verschieben sich oft.`, `Дані: Launch Library 2 від The Space Devs, ${updated}. Час указано запланований, і він часто зсувається.`)}</div>`;
 }

@@ -27,16 +27,16 @@ const S = {
   mode: null, R: null, view: { az: 180, el: 22 }, vfov: 70,
   passes: null, passesAt: 0, passJob: 0,
   tab: "now", lastSensor: 0, anyEvent: false,
-  tleTime: 0, times: [], loading: tl("Loading satellites…", "Satelliten werden geladen…"), detailsId: null,
+  tleTime: 0, times: [], loading: tl("Loading satellites…", "Satelliten werden geladen…", "Завантаження супутників…"), detailsId: null,
 };
 // The moment the sky is drawn for: now, or now moved by the time slider. Pass predictions,
 // countdowns and data ages keep using the real clock.
 const simNow = () => Date.now() + S.timeOffset;
 // A place found by GPS has no town name; it's shown as "Your GPS location" in the app's language.
-const GPS_NAME = tl("Your GPS location", "Dein GPS-Standort");
+const GPS_NAME = tl("Your GPS location", "Dein GPS-Standort", "Твоє GPS-місцезнаходження");
 const locName = loc => loc && (loc.src === "gps" ? GPS_NAME : loc.name);
 const placeName = loc => loc && loc.src !== "gps" && loc.name ? loc.name.split(",")[0] : null;   // the town, for sharing
-const CAT_LABEL = { bright: tl("Bright / easy to see", "Hell / gut sichtbar"), starlink: "Starlink", other: tl("Active satellite", "Aktiver Satellit") };
+const CAT_LABEL = { bright: tl("Bright / easy to see", "Hell / gut sichtbar", "Яскравий / добре видно"), starlink: "Starlink", other: tl("Active satellite", "Aktiver Satellit", "Активний супутник") };
 // Lining the sky up on a real star or planet: on = panel open, camera = live camera picture behind
 // the sky, edge = no camera, so the top edge of the phone is used as the pointer.
 const ALIGN = { on: false, camera: false, edge: false, stream: null, timer: 0, key: "" };

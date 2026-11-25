@@ -50,10 +50,10 @@
 
   // ---- the models ----
   const MODELS = {
-    cube: { title: tl("Placeholder", "Platzhalter"), size: tl("No model for this type yet", "Noch kein Modell für diese Art"), build: () => box([0, 0, 0], [1, 1, 1], COLORS.gold) },
+    cube: { title: tl("Placeholder", "Platzhalter", "Умовна модель"), size: tl("No model for this type yet", "Noch kein Modell für diese Art", "Для цього типу ще немає моделі"), build: () => box([0, 0, 0], [1, 1, 1], COLORS.gold) },
     iss: {
-      title: tl("International Space Station", "Internationale Raumstation"),
-      size: tl("About 109 m across its main truss, 73 m long", "Etwa 109 m breit über die Hauptstruktur, 73 m lang"),
+      title: tl("International Space Station", "Internationale Raumstation", "Міжнародна космічна станція"),
+      size: tl("About 109 m across its main truss, 73 m long", "Etwa 109 m breit über die Hauptstruktur, 73 m lang", "Близько 109 м завширшки по головній фермі, 73 м завдовжки"),
       build: () => {
         const parts = [box([0, 0, 0], [100, 1.6, 1.6], COLORS.grey)];
         for (const x of [-46, -32, 32, 46]) for (const z of [-18.5, 18.5]) parts.push(panel([x, 0, z], [11.6, 0.1, 35]));
@@ -65,8 +65,8 @@
       },
     },
     css: {
-      title: tl("Tiangong space station", "Raumstation Tiangong"),
-      size: tl("About 55 m wide with solar arrays; modules about 17 m long", "Etwa 55 m breit mit Solarflächen; Module etwa 17 m lang"),
+      title: tl("Tiangong space station", "Raumstation Tiangong", "Космічна станція «Тяньгун»"),
+      size: tl("About 55 m wide with solar arrays; modules about 17 m long", "Etwa 55 m breit mit Solarflächen; Module etwa 17 m lang", "Близько 55 м завширшки із сонячними панелями; модулі близько 17 м завдовжки"),
       build: () => join(
         cylinder([0, 0, 0], "z", 2.1, 16.6, COLORS.white),
         cylinder([9, 0, 6], "x", 2.1, 17.9, COLORS.white), cylinder([-9, 0, 6], "x", 2.1, 17.9, COLORS.white),
@@ -74,8 +74,8 @@
         panel([0, 0, -4], [24, 0.06, 3.5])),
     },
     hubble: {
-      title: tl("Hubble Space Telescope", "Hubble-Weltraumteleskop"),
-      size: tl("13.2 m long, 4.2 m across", "13,2 m lang, 4,2 m Durchmesser"),
+      title: tl("Hubble Space Telescope", "Hubble-Weltraumteleskop", "Космічний телескоп «Габбл»"),
+      size: tl("13.2 m long, 4.2 m across", "13,2 m lang, 4,2 m Durchmesser", "13,2 м завдовжки, 4,2 м у діаметрі"),
       build: () => join(
         cylinder([0, 0, 0], "x", 2.1, 13.2, COLORS.silver, 2.1, 20),
         cylinder([7.4, 0, 0], "x", 2.2, 1.6, COLORS.dark, 2.2, 20),
@@ -83,58 +83,58 @@
         dish([-2, 2.8, 0], 0.7)),
     },
     starlinkOne: {
-      title: tl("Starlink (version 1)", "Starlink (Version 1)"),
-      size: tl("Body about 2.8 × 1.4 m, one solar array about 8 m long", "Körper etwa 2,8 × 1,4 m, eine Solarfläche etwa 8 m lang"),
+      title: tl("Starlink (version 1)", "Starlink (Version 1)", "Starlink (версія 1)"),
+      size: tl("Body about 2.8 × 1.4 m, one solar array about 8 m long", "Körper etwa 2,8 × 1,4 m, eine Solarfläche etwa 8 m lang", "Корпус близько 2,8 × 1,4 м, одна сонячна панель близько 8 м завдовжки"),
       build: () => join(box([0, 0, 0], [2.8, 0.2, 1.4], COLORS.dark), box([0, 0.35, 0], [0.12, 0.5, 0.12], COLORS.grey), panel([4.6, 0.6, 0], [8.1, 0.05, 2.8])),
     },
     starlinkTwo: {
       title: "Starlink V2 Mini",
-      size: tl("Body about 4.1 × 2.7 m, about 30 m across with both solar arrays", "Körper etwa 4,1 × 2,7 m, mit beiden Solarflächen etwa 30 m breit"),
+      size: tl("Body about 4.1 × 2.7 m, about 30 m across with both solar arrays", "Körper etwa 4,1 × 2,7 m, mit beiden Solarflächen etwa 30 m breit", "Корпус близько 4,1 × 2,7 м, з обома сонячними панелями близько 30 м завширшки"),
       build: () => join(box([0, 0, 0], [4.1, 0.3, 2.7], COLORS.dark), wings(12.8, 4.1, 1.2, 0.5)),
     },
     bluebird: {
       title: "AST SpaceMobile BlueBird",
-      size: tl("Antenna array about 8 × 8 m, larger on the newest ones", "Antennenfeld etwa 8 × 8 m, bei den neuesten größer"),
+      size: tl("Antenna array about 8 × 8 m, larger on the newest ones", "Antennenfeld etwa 8 × 8 m, bei den neuesten größer", "Антенна решітка близько 8 × 8 м, у найновіших більша"),
       build: () => join(panel([0, 0, 0], [8, 0.12, 8], COLORS.dark), box([0, -0.7, 0], [1.2, 1.2, 1.2], COLORS.gold)),
     },
     cubesat: {
-      title: tl("CubeSat (small satellite)", "CubeSat (Kleinsatellit)"),
-      size: tl("About 10 × 10 × 34 cm, the size of a loaf of bread", "Etwa 10 × 10 × 34 cm, so groß wie ein Brotlaib"),
+      title: tl("CubeSat (small satellite)", "CubeSat (Kleinsatellit)", "CubeSat (малий супутник)"),
+      size: tl("About 10 × 10 × 34 cm, the size of a loaf of bread", "Etwa 10 × 10 × 34 cm, so groß wie ein Brotlaib", "Близько 10 × 10 × 34 см, завбільшки з буханку хліба"),
       build: () => join(box([0, 0, 0], [0.1, 0.34, 0.1], COLORS.silver), panel([0.11, 0, 0], [0.12, 0.34, 0.01]), panel([-0.11, 0, 0], [0.12, 0.34, 0.01])),
     },
     rocket: {
-      title: tl("Rocket stage", "Raketenstufe"),
-      size: tl("Typically 6–12 m long and 2.5–4 m across", "Meist 6–12 m lang und 2,5–4 m Durchmesser"),
+      title: tl("Rocket stage", "Raketenstufe", "Ступінь ракети"),
+      size: tl("Typically 6–12 m long and 2.5–4 m across", "Meist 6–12 m lang und 2,5–4 m Durchmesser", "Зазвичай 6–12 м завдовжки і 2,5–4 м у діаметрі"),
       build: () => join(cylinder([0, 0, 0], "x", 1.6, 9, COLORS.white, 1.6, 18), cylinder([-5.3, 0, 0], "x", 1.1, 1.6, COLORS.nozzle, 0.5, 14),
                         box([4.6, 0, 0], [0.3, 3.0, 0.3], COLORS.grey)),
     },
     debris: {
-      title: tl("Debris", "Trümmerteil"),
-      size: tl("Fragments, usually under a metre", "Bruchstücke, meist unter einem Meter"),
+      title: tl("Debris", "Trümmerteil", "Уламок"),
+      size: tl("Fragments, usually under a metre", "Bruchstücke, meist unter einem Meter", "Уламки, зазвичай менше метра"),
       build: () => {
         const v = [[0, 0.5, 0], [0.45, -0.2, 0.2], [-0.35, -0.25, 0.3], [0.05, -0.15, -0.45]];
         return [[0, 2, 1], [0, 1, 3], [0, 3, 2], [1, 2, 3]].map(f => ({ p: f.map(i => v[i]), c: COLORS.grey }));
       },
     },
     geo: {
-      title: tl("Communications satellite (geostationary)", "Kommunikationssatellit (geostationär)"),
-      size: tl("Body about 3 × 4 m, 30–40 m across with solar arrays", "Körper etwa 3 × 4 m, mit Solarflächen 30–40 m breit"),
+      title: tl("Communications satellite (geostationary)", "Kommunikationssatellit (geostationär)", "Супутник зв’язку (геостаціонарний)"),
+      size: tl("Body about 3 × 4 m, 30–40 m across with solar arrays", "Körper etwa 3 × 4 m, mit Solarflächen 30–40 m breit", "Корпус близько 3 × 4 м, із сонячними панелями 30–40 м завширшки"),
       build: () => join(box([0, 0, 0], [2.6, 3.6, 2.6], COLORS.gold), wings(13, 2.6, 1.6), dish([0, 0.6, 1.9], 1.2), dish([0, -0.9, 1.9], 0.8)),
     },
     gnss: {
-      title: tl("Navigation satellite", "Navigationssatellit"),
-      size: tl("Body about 2 × 2 m, about 18 m across with solar arrays", "Körper etwa 2 × 2 m, mit Solarflächen etwa 18 m breit"),
+      title: tl("Navigation satellite", "Navigationssatellit", "Навігаційний супутник"),
+      size: tl("Body about 2 × 2 m, about 18 m across with solar arrays", "Körper etwa 2 × 2 m, mit Solarflächen etwa 18 m breit", "Корпус близько 2 × 2 м, із сонячними панелями близько 18 м завширшки"),
       build: () => join(box([0, 0, 0], [1.8, 2.2, 1.8], COLORS.gold), wings(6.5, 2, 1.2), box([0, 0, 1.05], [1.2, 1.2, 0.3], COLORS.white)),
     },
     weather: {
-      title: tl("Weather or Earth-observation satellite", "Wetter- oder Erdbeobachtungssatellit"),
-      size: tl("Body about 4 m long, one large solar array", "Körper etwa 4 m lang, eine große Solarfläche"),
+      title: tl("Weather or Earth-observation satellite", "Wetter- oder Erdbeobachtungssatellit", "Метеорологічний супутник або супутник спостереження Землі"),
+      size: tl("Body about 4 m long, one large solar array", "Körper etwa 4 m lang, eine große Solarfläche", "Корпус близько 4 м завдовжки, одна велика сонячна панель"),
       build: () => join(box([0, 0, 0], [4.2, 1.6, 1.6], COLORS.gold), panel([0, 0, 4.6], [6, 0.05, 6]), box([0, 0, 1.3], [0.1, 0.1, 1], COLORS.grey),
                         box([1.6, -1, 0], [0.8, 0.4, 0.8], COLORS.white)),
     },
     generic: {
-      title: tl("Satellite", "Satellit"),
-      size: tl("Typical small satellite: body 1–2 m, a few metres across with solar arrays", "Typischer kleiner Satellit: Körper 1–2 m, mit Solarflächen einige Meter breit"),
+      title: tl("Satellite", "Satellit", "Супутник"),
+      size: tl("Typical small satellite: body 1–2 m, a few metres across with solar arrays", "Typischer kleiner Satellit: Körper 1–2 m, mit Solarflächen einige Meter breit", "Типовий невеликий супутник: корпус 1–2 м, із сонячними панелями кілька метрів завширшки"),
       build: () => join(box([0, 0, 0], [1.4, 1.4, 1.4], COLORS.gold), wings(3.5, 1.3, 0.9), dish([0, 0, 0.85], 0.45)),
     },
   };

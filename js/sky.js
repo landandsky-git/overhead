@@ -46,7 +46,7 @@ function polyline(pts, R, f, th) {
   ctx.stroke();
 }
 
-const COMPASS = tl(["N", "NE", "E", "SE", "S", "SW", "W", "NW"], ["N", "NO", "O", "SO", "S", "SW", "W", "NW"]);
+const COMPASS = tl(["N", "NE", "E", "SE", "S", "SW", "W", "NW"], ["N", "NO", "O", "SO", "S", "SW", "W", "NW"], ["Пн", "ПнСх", "Сх", "ПдСх", "Пд", "ПдЗх", "Зх", "ПнЗх"]);
 function compassName(az) { return COMPASS[Math.round(az / 45) % 8]; }
 function viewAz(R) { return ((Math.atan2(-R[2], -R[5]) * R2D) + 360) % 360; }
 
@@ -96,8 +96,8 @@ function drawPassArc(R, f, th, P) {
   }
   const rise = arc.find(p => p.el >= 0), top = arc.reduce((a, b) => b.el > a.el ? b : a);
   ctx.font = `600 11px ${FONT_M}`; ctx.textAlign = "center";
-  if (rise) { const q = P(rise.v); if (q.front) ctx.fillText(tl("rises here", "geht hier auf"), q.x, q.y + 14); }
-  { const q = P(top.v); if (q.front) ctx.fillText(`${tl("highest", "höchster Punkt")} ${top.el.toFixed(0)}°`, q.x, q.y - 13); }
+  if (rise) { const q = P(rise.v); if (q.front) ctx.fillText(tl("rises here", "geht hier auf", "сходить тут"), q.x, q.y + 14); }
+  { const q = P(top.v); if (q.front) ctx.fillText(`${tl("highest", "höchster Punkt", "найвища точка")} ${top.el.toFixed(0)}°`, q.x, q.y - 13); }
   ctx.textAlign = "left";
 }
 
@@ -131,7 +131,7 @@ function draw() {
   }
   ctx.font = `10px ${FONT_M}`; ctx.fillStyle = C.dim;
   for (const alt of [30, 60]) { const q = project(Math.round(viewAz(R) / 30) * 30 + 15, alt, R, f, th); if (q.front) ctx.fillText(alt + "°", q.x, q.y - 6); }
-  { const q = project(0, 90, R, f, th); if (q.front) ctx.fillText(tl("ZENITH", "ZENIT"), q.x, q.y - 8); }
+  { const q = project(0, 90, R, f, th); if (q.front) ctx.fillText(tl("ZENITH", "ZENIT", "ЗЕНІТ"), q.x, q.y - 8); }
 
   // constellation outlines and names (above the horizon only)
   ctx.strokeStyle = C.line; ctx.lineWidth = 1;
@@ -148,7 +148,7 @@ function draw() {
   ctx.font = `600 9px ${FONT_D}`; ctx.fillStyle = C.line; ctx.textAlign = "center";
   for (const n of sky.names) {
     if (n.rank > (S.vfov < 45 ? 3 : 2) || n.el < 3) continue;
-    const q = P(n.v); if (q.front) ctx.fillText(n.name.toUpperCase(), q.x, q.y);
+    const q = P(n.v); if (q.front) ctx.fillText(constellationName(n.name).toUpperCase(), q.x, q.y);
   }
   // stars: anything fainter than what your sky shows right now is drawn faintly
   const seeLimit = limitNow();
@@ -179,7 +179,7 @@ function draw() {
       const t = [sv[0] - d * m[0], sv[1] - d * m[1], sv[2] - d * m[2]], tn = Math.hypot(...t) || 1;
       const q2 = P([m[0] + 0.02 * t[0] / tn, m[1] + 0.02 * t[1] / tn, m[2] + 0.02 * t[2] / tn]);
       drawMoon(q.x, q.y, 9, sky.moon.lit, Math.atan2(q2.y - q.y, q2.x - q.x));
-      ctx.fillStyle = C.moon; ctx.fillText(tl(`Moon ${Math.round(sky.moon.lit * 100)}%`, `Mond ${Math.round(sky.moon.lit * 100)} %`), q.x + 13, q.y + 12);
+      ctx.fillStyle = C.moon; ctx.fillText(tl(`Moon ${Math.round(sky.moon.lit * 100)}%`, `Mond ${Math.round(sky.moon.lit * 100)} %`, `Місяць ${Math.round(sky.moon.lit * 100)} %`), q.x + 13, q.y + 12);
     }
   }
   drawSkyGuide(P);                 // meteor shower radiants, comets, aurora (skyguide.js)
@@ -249,7 +249,7 @@ function draw() {
   const boxes = [[cx - 75, cy + 14, 150, 26]];
   const label = (e, color, force) => {
     if (labeled.has(e.sat.idx)) return;
-    const text = favName(e.sat) + (e.faint ? tl(" (too faint)", " (zu schwach)") : ""), w = ctx.measureText(text).width, b = [e.qx + 6, e.qy - 17, w + 2, 14];
+    const text = favName(e.sat) + (e.faint ? tl(" (too faint)", " (zu schwach)", " (заслабкий)") : ""), w = ctx.measureText(text).width, b = [e.qx + 6, e.qy - 17, w + 2, 14];
     if (!force && boxes.some(o => b[0] < o[0] + o[2] && o[0] < b[0] + b[2] && b[1] < o[1] + o[3] && o[1] < b[1] + b[3])) return;
     boxes.push(b); labeled.add(e.sat.idx); ctx.fillStyle = color; ctx.fillText(text, e.qx + 7, e.qy - 6);
   };

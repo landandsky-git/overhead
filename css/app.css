@@ -14,7 +14,7 @@
   --planet: #f0b38a;   /* planets: warmer and pinker than sunlit satellites */
   --moon: #e9e4d4;
   --bad: #ff8a7a;
-  --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Chakra Petch", "Exo 2", "Segoe UI", system-ui, sans-serif;   /* Exo 2 only fills in Cyrillic, which Chakra Petch lacks */
   --font-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
   --font-data: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
   --text: 1;           /* text size from Settings (1, 1.15 or 1.3); every font size below is multiplied by it */
@@ -84,10 +84,10 @@ body.timeshift .hint { top: calc(env(safe-area-inset-top, 0px) + 118px); }
 .sheet { position: fixed; left: 0; right: 0; bottom: 0; background: var(--panel); border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 8px); max-height: 62%; display: flex; flex-direction: column; touch-action: pan-y; }
 .sheet-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; row-gap: 6px; padding-block: 10px; }
 #sheetTitle { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-/* Not enough room for the title and the tabs side by side (narrow phones, longer German words):
+/* Not enough room for the title and the tabs side by side (narrow phones, longer German and Ukrainian words):
    the tabs get their own row, spread across it. */
 @media (max-width: 370px) { .tabs { flex-basis: 100%; justify-content: space-between; } }
-@media (max-width: 560px) { html[lang="de"] .tabs { flex-basis: 100%; justify-content: space-between; } }
+@media (max-width: 560px) { html[lang="de"] .tabs, html[lang="uk"] .tabs { flex-basis: 100%; justify-content: space-between; } }
 .grab { flex: 1; min-width: 0; text-align: left; font: 600 calc(13px * var(--text)) var(--font-display); letter-spacing: .1em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .grab::after { content: "▴"; color: var(--dim); }
 .sheet.open .grab::after { content: "▾"; }
@@ -216,8 +216,8 @@ button.passrow { width: 100%; text-align: left; }
 .saved-go .sub { font: calc(12px * var(--text)) var(--font-data); color: var(--dim); }
 .saved.here .saved-go { color: var(--target); }
 .saved-del { color: var(--dim); padding: 8px 10px; font-size: calc(14px * var(--text)); }
-/* the night-sky guide in Tonight: wider labels for German, and the "Coming up" list */
-html[lang="de"] .tn-line { grid-template-columns: 6.4em minmax(0, 1fr); }
+/* the night-sky guide in Tonight: wider labels for German and Ukrainian, and the "Coming up" list */
+html[lang="de"] .tn-line, html[lang="uk"] .tn-line { grid-template-columns: 6.4em minmax(0, 1fr); }
 .coming { display: grid; }
 .up-line { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 10px; font-size: calc(13px * var(--text)); padding: 6px 0; border-top: 1px solid var(--line); align-items: baseline; }
 .up-d { font: calc(11px * var(--text)) var(--font-data); color: var(--dim); }

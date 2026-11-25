@@ -26,7 +26,8 @@ function applyRed(level) {
   document.body.classList.toggle("dim", level > 1);
   $("redBtn").setAttribute("aria-pressed", level > 0);
   const label = tl(["Red night mode", "Red night mode: tap again for dimmer", "Dim red: tap again to turn off"],
-                   ["Rotlicht-Nachtmodus", "Rotlicht: noch einmal tippen für dunkler", "Dunkles Rot: noch einmal tippen zum Ausschalten"])[level];
+                   ["Rotlicht-Nachtmodus", "Rotlicht: noch einmal tippen für dunkler", "Dunkles Rot: noch einmal tippen zum Ausschalten"],
+                   ["Червоний нічний режим", "Червоний режим: торкнися ще раз, щоб приглушити", "Приглушений червоний: торкнися ще раз, щоб вимкнути"])[level];
   $("redBtn").title = label; $("redBtn").setAttribute("aria-label", label);
   $("redBtn").textContent = level > 1 ? "R−" : "R";
   store.set("red", level);

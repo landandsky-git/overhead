@@ -15,7 +15,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=Exo+2:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap">
 <link rel="stylesheet" href="css/app.css">
 <script>/* the text size chosen in Settings, applied before the page first draws */ try { document.documentElement.style.setProperty("--text", JSON.parse(localStorage.getItem("textSize")) || 1); } catch {}</script>
 <script type="importmap">{ "imports": { "three": "./lib/three/three.module.min.js" } }</script>
@@ -23,75 +23,75 @@
 <body>
 <!-- Text in German sits next to the English: data-de for the text, data-de-title etc. for attributes (js/i18n.js). -->
 <video id="cam" playsinline muted hidden></video>
-<canvas id="sky" aria-label="Sky view showing satellites in the direction the phone points" data-de-aria-label="Himmelsansicht mit den Satelliten in der Richtung, in die das Handy zeigt"></canvas>
+<canvas id="sky" aria-label="Sky view showing satellites in the direction the phone points" data-de-aria-label="Himmelsansicht mit den Satelliten in der Richtung, in die das Handy zeigt" data-uk-aria-label="Вид неба із супутниками в напрямку, куди дивиться телефон"></canvas>
 
 <div class="top">
   <div class="brand">Overhead</div>
-  <div class="status" id="status" data-de="Lädt…">Loading…</div>
-  <button class="iconbtn" id="timeBtn" title="Show the sky at another time" aria-label="Show the sky at another time" data-de-title="Den Himmel zu einer anderen Zeit zeigen" data-de-aria-label="Den Himmel zu einer anderen Zeit zeigen" aria-expanded="false" aria-controls="timeBar">◷</button>
-  <button class="iconbtn" id="alignBtn" title="Align with a star or planet" aria-label="Align with a star or planet" data-de-title="An einem Stern oder Planeten ausrichten" data-de-aria-label="An einem Stern oder Planeten ausrichten">◎</button>
+  <div class="status" id="status" data-de="Lädt…" data-uk="Завантаження…">Loading…</div>
+  <button class="iconbtn" id="timeBtn" title="Show the sky at another time" aria-label="Show the sky at another time" data-de-title="Den Himmel zu einer anderen Zeit zeigen" data-uk-title="Показати небо в інший час" data-de-aria-label="Den Himmel zu einer anderen Zeit zeigen" data-uk-aria-label="Показати небо в інший час" aria-expanded="false" aria-controls="timeBar">◷</button>
+  <button class="iconbtn" id="alignBtn" title="Align with a star or planet" aria-label="Align with a star or planet" data-de-title="An einem Stern oder Planeten ausrichten" data-uk-title="Вирівняти за зорею чи планетою" data-de-aria-label="An einem Stern oder Planeten ausrichten" data-uk-aria-label="Вирівняти за зорею чи планетою">◎</button>
   <button class="iconbtn" id="redBtn" aria-pressed="false" title="Red night mode" aria-label="Red night mode">R</button>
-  <button class="iconbtn" id="setBtn" title="Settings" aria-label="Settings" data-de-title="Einstellungen" data-de-aria-label="Einstellungen">⚙</button>
+  <button class="iconbtn" id="setBtn" title="Settings" aria-label="Settings" data-de-title="Einstellungen" data-uk-title="Налаштування" data-de-aria-label="Einstellungen" data-uk-aria-label="Налаштування">⚙</button>
 </div>
 <button class="timepill" id="timePill" hidden></button>
 <div class="notice" id="notice" role="status" hidden></div>
 <div class="hint" id="hint" role="status"></div>
 <div class="readout" id="readout"></div>
 <button class="zoompill" id="zoomPill" hidden></button>
-<button class="compasspill" id="compassPill" data-de="⚠ Kompass unruhig · beheben" hidden>⚠ Compass unsteady · fix</button>
+<button class="compasspill" id="compassPill" data-de="⚠ Kompass unruhig · beheben" data-uk="⚠ Компас нестабільний · виправити" hidden>⚠ Compass unsteady · fix</button>
 <div class="sidebtns">
-  <button class="iconbtn" id="globeBtn" title="3D globe: the whole Earth and every satellite" aria-label="3D globe" data-de-title="3D-Globus: die ganze Erde und alle Satelliten" data-de-aria-label="3D-Globus" hidden>
+  <button class="iconbtn" id="globeBtn" title="3D globe: the whole Earth and every satellite" aria-label="3D globe" data-de-title="3D-Globus: die ganze Erde und alle Satelliten" data-uk-title="3D-глобус: уся Земля й усі супутники" data-de-aria-label="3D-Globus" data-uk-aria-label="3D-глобус" hidden>
     <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><ellipse cx="12" cy="12" rx="3.6" ry="8"/><path d="M4.6 9h14.8M4.6 15h14.8"/></svg>
   </button>
-  <button class="iconbtn" id="motionBtn" aria-pressed="false" aria-label="Follow the phone's motion" data-de-aria-label="Der Bewegung des Handys folgen" hidden>
+  <button class="iconbtn" id="motionBtn" aria-pressed="false" aria-label="Follow the phone's motion" data-de-aria-label="Der Bewegung des Handys folgen" data-uk-aria-label="Стежити за рухом телефону" hidden>
     <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
       <rect x="8.5" y="4" width="7" height="16" rx="1.6"/><path d="M5.2 8.6a5.5 5.5 0 0 0 0 6.8M18.8 8.6a5.5 5.5 0 0 1 0 6.8"/><path class="slash" d="M4.5 19.5 19.5 4.5"/>
     </svg>
   </button>
-  <button class="iconbtn" id="camBtn" aria-pressed="false" title="Show the camera picture behind the sky" aria-label="Camera view" data-de-title="Kamerabild hinter dem Himmel zeigen" data-de-aria-label="Kameraansicht" hidden>◉</button>
+  <button class="iconbtn" id="camBtn" aria-pressed="false" title="Show the camera picture behind the sky" aria-label="Camera view" data-de-title="Kamerabild hinter dem Himmel zeigen" data-uk-title="Показати зображення з камери під небом" data-de-aria-label="Kameraansicht" data-uk-aria-label="Режим камери" hidden>◉</button>
 </div>
 
 <div class="card" id="card" hidden>
-  <div class="card-top"><h3 id="cardName"></h3><button class="favbtn" id="cardFav" aria-pressed="false" aria-label="Favorite">☆</button><span class="card-acts"><button id="cardShare" data-de="Teilen" hidden>Share</button><button id="cardClose" data-de="Schließen">Clear</button></span></div>
+  <div class="card-top"><h3 id="cardName"></h3><button class="favbtn" id="cardFav" aria-pressed="false" aria-label="Favorite">☆</button><span class="card-acts"><button id="cardShare" data-de="Teilen" data-uk="Поділитися" hidden>Share</button><button id="cardClose" data-de="Schließen" data-uk="Закрити">Clear</button></span></div>
   <div class="where" id="cardWhere"></div>
   <div class="meta" id="cardMeta"></div>
   <div class="meta" id="cardAbout"></div>
-  <div class="feedback" id="cardFb" hidden><span data-de="Gesehen?">Did you see it?</span><button id="sawYes" data-de="Ja">Saw it</button><button id="sawNo" data-de="Nein">Couldn't see it</button></div>
-  <button class="more" id="cardMore" data-de="Bahn, Betreiber und Start ansehen ›">Orbit, operator and launch details ›</button>
+  <div class="feedback" id="cardFb" hidden><span data-de="Gesehen?" data-uk="Видно?">Did you see it?</span><button id="sawYes" data-de="Ja" data-uk="Так">Saw it</button><button id="sawNo" data-de="Nein" data-uk="Ні">Couldn't see it</button></div>
+  <button class="more" id="cardMore" data-de="Bahn, Betreiber und Start ansehen ›" data-uk="Орбіта, оператор і запуск ›">Orbit, operator and launch details ›</button>
 </div>
 
 <section class="sheet" id="sheet">
   <div class="sheet-head">
-    <button class="grab" id="grab" aria-expanded="false" aria-controls="sheetBody"><span id="sheetTitle" data-de="Jetzt am Himmel">Up now</span></button>
+    <button class="grab" id="grab" aria-expanded="false" aria-controls="sheetBody"><span id="sheetTitle" data-de="Jetzt am Himmel" data-uk="Зараз на небі">Up now</span></button>
     <div class="tabs" role="tablist">
-      <button class="tab" role="tab" id="tabNow" aria-selected="true" aria-controls="sheetBody" data-de="Jetzt">Now</button>
-      <button class="tab" role="tab" id="tabTonight" aria-selected="false" aria-controls="sheetBody" tabindex="-1" data-de="Nacht">Tonight</button>
-      <button class="tab" role="tab" id="tabPasses" aria-selected="false" aria-controls="sheetBody" tabindex="-1" data-de="Überflüge">Passes</button>
-      <button class="tab" role="tab" id="tabSpace" aria-selected="false" aria-controls="sheetBody" tabindex="-1" data-de="Raumfahrt">Space</button>
+      <button class="tab" role="tab" id="tabNow" aria-selected="true" aria-controls="sheetBody" data-de="Jetzt" data-uk="Зараз">Now</button>
+      <button class="tab" role="tab" id="tabTonight" aria-selected="false" aria-controls="sheetBody" tabindex="-1" data-de="Nacht" data-uk="Ніч">Tonight</button>
+      <button class="tab" role="tab" id="tabPasses" aria-selected="false" aria-controls="sheetBody" tabindex="-1" data-de="Überflüge" data-uk="Прольоти">Passes</button>
+      <button class="tab" role="tab" id="tabSpace" aria-selected="false" aria-controls="sheetBody" tabindex="-1" data-de="Raumfahrt" data-uk="Космос">Space</button>
     </div>
   </div>
   <div class="sheet-body" id="sheetBody" role="tabpanel" aria-labelledby="tabNow">
-    <div class="tools" id="nowTools"><input type="search" id="findIn" name="satellite" placeholder="Name or number, e.g. ISS or 25544…" autocomplete="off" spellcheck="false" enterkeyhint="search" aria-label="Find a satellite" data-de-placeholder="Name oder Nummer, z. B. ISS oder 25544…" data-de-aria-label="Satellit suchen">
-      <button class="linkbtn" id="idBtn" data-de="Etwas Bewegtes gesehen? Finde heraus, was es war ›">Saw something moving? Find out what it was ›</button></div>
+    <div class="tools" id="nowTools"><input type="search" id="findIn" name="satellite" placeholder="Name or number, e.g. ISS or 25544…" autocomplete="off" spellcheck="false" enterkeyhint="search" aria-label="Find a satellite" data-de-placeholder="Name oder Nummer, z. B. ISS oder 25544…" data-uk-placeholder="Назва або номер, напр. ISS чи 25544…" data-de-aria-label="Satellit suchen" data-uk-aria-label="Знайти супутник">
+      <button class="linkbtn" id="idBtn" data-de="Etwas Bewegtes gesehen? Finde heraus, was es war ›" data-uk="Щось рухалося в небі? Дізнайся, що це було ›">Saw something moving? Find out what it was ›</button></div>
     <div id="listBox"></div>
   </div>
 </section>
 
 <section class="timebar" id="timeBar" hidden>
   <div class="tb-row">
-    <span class="tb-label" id="timeLabel" data-de="Jetzt">Now</span>
-    <button class="linkbtn" id="timeNow" data-de="Zurück zu jetzt">Back to now</button>
-    <button class="linkbtn" id="timeClose" data-de="Fertig">Done</button>
+    <span class="tb-label" id="timeLabel" data-de="Jetzt" data-uk="Зараз">Now</span>
+    <button class="linkbtn" id="timeNow" data-de="Zurück zu jetzt" data-uk="Назад до поточного часу">Back to now</button>
+    <button class="linkbtn" id="timeClose" data-de="Fertig" data-uk="Готово">Done</button>
   </div>
-  <input type="range" id="timeIn" min="-120" max="720" step="1" value="0" aria-label="Move the sky in time, in minutes from now" data-de-aria-label="Den Himmel zeitlich verschieben, in Minuten ab jetzt">
-  <div class="tb-ticks" aria-hidden="true"><span style="left:0%">−2 h</span><span style="left:14.3%" data-de="jetzt">now</span><span style="left:42.9%">+4 h</span><span style="left:71.4%">+8 h</span><span style="left:100%">+12 h</span></div>
+  <input type="range" id="timeIn" min="-120" max="720" step="1" value="0" aria-label="Move the sky in time, in minutes from now" data-de-aria-label="Den Himmel zeitlich verschieben, in Minuten ab jetzt" data-uk-aria-label="Зсунути небо в часі, у хвилинах від поточного моменту">
+  <div class="tb-ticks" aria-hidden="true"><span style="left:0%" data-uk="−2 год">−2 h</span><span style="left:14.3%" data-de="jetzt" data-uk="зараз">now</span><span style="left:42.9%" data-uk="+4 год">+4 h</span><span style="left:71.4%" data-uk="+8 год">+8 h</span><span style="left:100%" data-uk="+12 год">+12 h</span></div>
 </section>
 
 <section class="alignbar" id="idBar" hidden>
   <p class="align-help" id="idHelp"></p>
   <div class="align-actions">
-    <button class="secondary" id="idCancel" data-de="Abbrechen">Cancel</button>
-    <button class="secondary go" id="idSearch" data-de="Letzte 10 Minuten durchsuchen">Search the last 10 minutes</button>
+    <button class="secondary" id="idCancel" data-de="Abbrechen" data-uk="Скасувати">Cancel</button>
+    <button class="secondary go" id="idSearch" data-de="Letzte 10 Minuten durchsuchen" data-uk="Шукати за останні 10 хвилин">Search the last 10 minutes</button>
   </div>
   <div class="idlist" id="idList"></div>
 </section>
@@ -100,8 +100,8 @@
   <p class="align-help" id="alignHelp"></p>
   <div id="alignList"></div>
   <div class="align-actions">
-    <button class="secondary" id="alignCancel" data-de="Abbrechen">Cancel</button>
-    <button class="secondary" id="alignReset" data-de="Ausrichtung zurücksetzen">Undo alignment</button>
+    <button class="secondary" id="alignCancel" data-de="Abbrechen" data-uk="Скасувати">Cancel</button>
+    <button class="secondary" id="alignReset" data-de="Ausrichtung zurücksetzen" data-uk="Скасувати вирівнювання">Undo alignment</button>
   </div>
 </section>
 
@@ -110,121 +110,121 @@
   <div class="hz-progress" aria-hidden="true"><span id="hzFill"></span></div>
   <p class="small" id="hzPct"></p>
   <div class="align-actions">
-    <button class="secondary" id="hzCancel" data-de="Abbrechen">Cancel</button>
-    <button class="secondary go" id="hzSave" data-de="Speichern">Save</button>
+    <button class="secondary" id="hzCancel" data-de="Abbrechen" data-uk="Скасувати">Cancel</button>
+    <button class="secondary go" id="hzSave" data-de="Speichern" data-uk="Зберегти">Save</button>
   </div>
 </section>
 
 <div class="overlay" id="intro">
   <div class="intro">
     <h1>Overhead</h1>
-    <p data-de="Richte dein Handy auf den Nachthimmel und sieh, welche Satelliten dort sind. Verfolgt rund 17.000 Satelliten, auch Starlink. Goldene Punkte werden von der Sonne angestrahlt, und je größer der Punkt, desto heller wirkt der Satellit.">Point your phone at the night sky to see which satellites are there. Tracks about 17,000 satellites, including Starlink. Gold dots are lit by the sun, and the bigger the dot, the brighter the satellite looks.</p>
-    <button class="primary" id="startBtn">Start</button>
-    <button class="secondary" id="dragBtn" data-de="Ohne Sensoren nutzen (Himmel ziehen)">Use without sensors (drag to look)</button>
-    <p class="small" data-de="Braucht Zugriff auf Standort und Bewegungssensoren. Funktioniert am besten draußen, fern von Metall und Magneten, nachdem du das Handy in Form einer Acht geschwenkt hast, damit sich der Kompass einpendelt. Mit der Handy-Taste rechts kannst du jederzeit umschalten.">Needs location and motion access. Works best outdoors, away from metal and magnets, after waving the phone in a figure-8 to settle the compass. You can switch any time with the phone button on the right.</p>
+    <p data-de="Richte dein Handy auf den Nachthimmel und sieh, welche Satelliten dort sind. Verfolgt rund 17.000 Satelliten, auch Starlink. Goldene Punkte werden von der Sonne angestrahlt, und je größer der Punkt, desto heller wirkt der Satellit." data-uk="Наведи телефон на нічне небо, щоб побачити, які там супутники. Застосунок відстежує близько 17&nbsp;000 супутників, зокрема Starlink. Золоті точки освітлює Сонце, і що більша точка, то яскравіший супутник.">Point your phone at the night sky to see which satellites are there. Tracks about 17,000 satellites, including Starlink. Gold dots are lit by the sun, and the bigger the dot, the brighter the satellite looks.</p>
+    <button class="primary" id="startBtn" data-uk="Почати">Start</button>
+    <button class="secondary" id="dragBtn" data-de="Ohne Sensoren nutzen (Himmel ziehen)" data-uk="Без датчиків (тягни небо пальцем)">Use without sensors (drag to look)</button>
+    <p class="small" data-de="Braucht Zugriff auf Standort und Bewegungssensoren. Funktioniert am besten draußen, fern von Metall und Magneten, nachdem du das Handy in Form einer Acht geschwenkt hast, damit sich der Kompass einpendelt. Mit der Handy-Taste rechts kannst du jederzeit umschalten." data-uk="Потрібен доступ до місцезнаходження й датчиків руху. Найкраще працює надворі, подалі від металу й магнітів, після того як помахаєш телефоном вісімкою, щоб відкалібрувати компас. Перемкнути режим можна будь-коли кнопкою з телефоном праворуч.">Needs location and motion access. Works best outdoors, away from metal and magnets, after waving the phone in a figure-8 to settle the compass. You can switch any time with the phone button on the right.</p>
     <p class="err" id="introErr" role="alert" hidden></p>
   </div>
 </div>
 
 <div class="overlay page" id="settings" role="dialog" aria-modal="true" aria-labelledby="setTitle" hidden>
   <div class="intro">
-    <div class="panel-head"><h2 id="setTitle" data-de="Einstellungen">Settings</h2><button class="linkbtn" id="setDone" data-de="Fertig">Done</button></div>
+    <div class="panel-head"><h2 id="setTitle" data-de="Einstellungen" data-uk="Налаштування">Settings</h2><button class="linkbtn" id="setDone" data-de="Fertig" data-uk="Готово">Done</button></div>
 
     <section class="group">
-      <h3 data-de="Dein Standort">Your location</h3>
+      <h3 data-de="Dein Standort" data-uk="Твоє місцезнаходження">Your location</h3>
       <div class="current" id="locNow"></div>
       <div class="saved-list" id="placesList"></div>
-      <button class="secondary" id="savePlaceBtn" data-de="Diesen Ort speichern" hidden>Save this place</button>
-      <label class="field"><span data-de="Ort oder Stadt suchen">Search for a town or city</span>
-        <input type="search" id="placeIn" name="place" placeholder="e.g. Munich…" autocomplete="off" spellcheck="false" enterkeyhint="search" data-de-placeholder="z. B. München…">
+      <button class="secondary" id="savePlaceBtn" data-de="Diesen Ort speichern" data-uk="Зберегти це місце" hidden>Save this place</button>
+      <label class="field"><span data-de="Ort oder Stadt suchen" data-uk="Пошук міста чи села">Search for a town or city</span>
+        <input type="search" id="placeIn" name="place" placeholder="e.g. Munich…" autocomplete="off" spellcheck="false" enterkeyhint="search" data-de-placeholder="z. B. München…" data-uk-placeholder="напр. Київ…">
       </label>
       <div class="results" id="placeResults"></div>
-      <button class="secondary" id="gpsBtn" data-de="Stattdessen GPS des Handys nutzen">Use my phone's GPS instead</button>
+      <button class="secondary" id="gpsBtn" data-de="Stattdessen GPS des Handys nutzen" data-uk="Натомість використати GPS телефону">Use my phone's GPS instead</button>
       <details>
-        <summary data-de="Stattdessen Koordinaten eingeben">Enter coordinates instead</summary>
+        <summary data-de="Stattdessen Koordinaten eingeben" data-uk="Натомість ввести координати">Enter coordinates instead</summary>
         <div class="pair">
-          <label class="field"><span data-de="Breitengrad">Latitude</span><input type="number" id="latIn" name="lat" step="0.0001" min="-90" max="90" autocomplete="off" aria-describedby="locErr"></label>
-          <label class="field"><span data-de="Längengrad">Longitude</span><input type="number" id="lonIn" name="lon" step="0.0001" min="-180" max="180" autocomplete="off" aria-describedby="locErr"></label>
+          <label class="field"><span data-de="Breitengrad" data-uk="Широта">Latitude</span><input type="number" id="latIn" name="lat" step="0.0001" min="-90" max="90" autocomplete="off" aria-describedby="locErr"></label>
+          <label class="field"><span data-de="Längengrad" data-uk="Довгота">Longitude</span><input type="number" id="lonIn" name="lon" step="0.0001" min="-180" max="180" autocomplete="off" aria-describedby="locErr"></label>
         </div>
-        <button class="secondary" id="coordBtn" data-de="Diese Koordinaten verwenden">Use these coordinates</button>
+        <button class="secondary" id="coordBtn" data-de="Diese Koordinaten verwenden" data-uk="Використати ці координати">Use these coordinates</button>
       </details>
       <p class="err" id="locErr" role="alert" hidden></p>
     </section>
 
     <section class="group">
-      <h3 data-de="Dein Himmel">Your sky</h3>
-      <div class="seg" id="skyIn" role="radiogroup" aria-label="How dark your sky is" data-de-aria-label="Wie dunkel dein Himmel ist"></div>
+      <h3 data-de="Dein Himmel" data-uk="Твоє небо">Your sky</h3>
+      <div class="seg" id="skyIn" role="radiogroup" aria-label="How dark your sky is" data-de-aria-label="Wie dunkel dein Himmel ist" data-uk-aria-label="Наскільки темне твоє небо"></div>
       <p class="small" id="skyNote"></p>
     </section>
 
     <section class="group">
-      <h3 data-de="Dein Horizont">Your horizon</h3>
+      <h3 data-de="Dein Horizont" data-uk="Твій горизонт">Your horizon</h3>
       <p class="small" id="hzNote"></p>
       <button class="secondary" id="hzRecord">Record my horizon</button>
-      <button class="secondary" id="hzClear" data-de="Meinen Horizont entfernen" hidden>Remove my horizon</button>
+      <button class="secondary" id="hzClear" data-de="Meinen Horizont entfernen" data-uk="Видалити мій горизонт" hidden>Remove my horizon</button>
     </section>
 
     <section class="group">
-      <h3 data-de="Am Himmel zeigen">Show on the sky</h3>
-      <label class="check"><input type="checkbox" id="showBright"><span data-de="Helle Satelliten, Raketenstufen und Raumstationen">Bright satellites, rocket stages and space stations</span><span class="count" id="cntBright"></span></label>
+      <h3 data-de="Am Himmel zeigen" data-uk="Показувати на небі">Show on the sky</h3>
+      <label class="check"><input type="checkbox" id="showBright"><span data-de="Helle Satelliten, Raketenstufen und Raumstationen" data-uk="Яскраві супутники, ступені ракет і космічні станції">Bright satellites, rocket stages and space stations</span><span class="count" id="cntBright"></span></label>
       <label class="check"><input type="checkbox" id="showStarlink"><span>Starlink</span><span class="count" id="cntStarlink"></span></label>
-      <label class="check"><input type="checkbox" id="showOther"><span data-de="Alle anderen aktiven Satelliten">All other active satellites</span><span class="count" id="cntOther"></span></label>
-      <label class="check"><input type="checkbox" id="eyeOnly"><span data-de="Nur Satelliten zeigen, die an deinem Himmel hell genug zum Sehen sind">Only show satellites bright enough to see from your sky</span><span class="count"></span></label>
-      <p class="small" data-de="Angestrahlte Satelliten werden umso größer und heller gezeichnet, je heller sie aussehen sollten, auf derselben Skala wie die Sterne. Die typische Helligkeit jedes Satelliten stammt aus Messungen, wo es welche gibt (Katalog von Mike McCants, veröffentlichte Starlink-Studien), sonst aus seiner Radargröße oder seiner Art. Die App berücksichtigt dann Entfernung und Winkel zur Sonne. Rechne mit einer Genauigkeit von etwa einer Magnitude.">Sunlit satellites are drawn bigger and brighter the brighter they should look, on the same scale as the stars. Each satellite's typical brightness comes from measurements where they exist (Mike McCants' catalog, published Starlink studies), otherwise from its radar size or type. The app then adjusts for distance and angle to the sun. Expect it to be within about one magnitude.</p>
+      <label class="check"><input type="checkbox" id="showOther"><span data-de="Alle anderen aktiven Satelliten" data-uk="Усі інші активні супутники">All other active satellites</span><span class="count" id="cntOther"></span></label>
+      <label class="check"><input type="checkbox" id="eyeOnly"><span data-de="Nur Satelliten zeigen, die an deinem Himmel hell genug zum Sehen sind" data-uk="Показувати лише супутники, достатньо яскраві для твого неба">Only show satellites bright enough to see from your sky</span><span class="count"></span></label>
+      <p class="small" data-de="Angestrahlte Satelliten werden umso größer und heller gezeichnet, je heller sie aussehen sollten, auf derselben Skala wie die Sterne. Die typische Helligkeit jedes Satelliten stammt aus Messungen, wo es welche gibt (Katalog von Mike McCants, veröffentlichte Starlink-Studien), sonst aus seiner Radargröße oder seiner Art. Die App berücksichtigt dann Entfernung und Winkel zur Sonne. Rechne mit einer Genauigkeit von etwa einer Magnitude." data-uk="Освітлені Сонцем супутники малюються тим більшими й яскравішими, чим яскравішими вони мають виглядати, у тій самій шкалі, що й зорі. Типову яскравість кожного супутника взято з вимірювань, де вони є (каталог Майка Маккантса, опубліковані дослідження Starlink), а інакше оцінено за радарним розміром чи типом. Далі застосунок враховує відстань і кут до Сонця. Похибка зазвичай у межах однієї зоряної величини.">Sunlit satellites are drawn bigger and brighter the brighter they should look, on the same scale as the stars. Each satellite's typical brightness comes from measurements where they exist (Mike McCants' catalog, published Starlink studies), otherwise from its radar size or type. The app then adjusts for distance and angle to the sun. Expect it to be within about one magnitude.</p>
     </section>
 
     <section class="group">
-      <h3><span data-de="Kompasskorrektur:">Compass correction:</span> <span id="corrVal">0°</span></h3>
-      <input type="range" id="corrIn" min="-90" max="90" step="0.5" value="0" aria-label="Compass correction in degrees" data-de-aria-label="Kompasskorrektur in Grad">
-      <p class="small" data-de="Handykompasse zeigen nach magnetisch Nord und liegen oft ein paar Grad daneben. Am einfachsten korrigierst du das mit der Taste ◎: Peile einen hellen Stern, Planeten oder den Mond an, und die App stellt das für dich ein. Du kannst auch von Hand nachjustieren.">Phone compasses point to magnetic north and are often a few degrees off. The easiest fix is the ◎ button: line up a bright star, planet or the Moon and the app sets this for you. You can also nudge it by hand.</p>
+      <h3><span data-de="Kompasskorrektur:" data-uk="Поправка компаса:">Compass correction:</span> <span id="corrVal">0°</span></h3>
+      <input type="range" id="corrIn" min="-90" max="90" step="0.5" value="0" aria-label="Compass correction in degrees" data-de-aria-label="Kompasskorrektur in Grad" data-uk-aria-label="Поправка компаса в градусах">
+      <p class="small" data-de="Handykompasse zeigen nach magnetisch Nord und liegen oft ein paar Grad daneben. Am einfachsten korrigierst du das mit der Taste ◎: Peile einen hellen Stern, Planeten oder den Mond an, und die App stellt das für dich ein. Du kannst auch von Hand nachjustieren." data-uk="Компаси телефонів показують на магнітну північ і часто помиляються на кілька градусів. Найпростіше виправити це кнопкою ◎: наведи камеру на яскраву зорю, планету чи Місяць, і застосунок усе налаштує сам. Можна також підкоригувати вручну.">Phone compasses point to magnetic north and are often a few degrees off. The easiest fix is the ◎ button: line up a bright star, planet or the Moon and the app sets this for you. You can also nudge it by hand.</p>
     </section>
 
     <section class="group">
-      <h3 data-de="Satellitendaten">Satellite data</h3>
+      <h3 data-de="Satellitendaten" data-uk="Дані про супутники">Satellite data</h3>
       <p class="small" id="tleInfo"></p>
-      <button class="secondary" id="refreshBtn" data-de="Neue Satellitendaten laden">Download fresh satellite data</button>
+      <button class="secondary" id="refreshBtn" data-de="Neue Satellitendaten laden" data-uk="Завантажити свіжі дані про супутники">Download fresh satellite data</button>
     </section>
 
     <section class="group">
-      <h3 data-de="Deine Sichtungen">Your sightings</h3>
+      <h3 data-de="Deine Sichtungen" data-uk="Твої спостереження">Your sightings</h3>
       <p class="small" id="sightNote"></p>
-      <button class="secondary" id="sightReset" data-de="Meine Sichtungen vergessen">Forget my sightings</button>
+      <button class="secondary" id="sightReset" data-de="Meine Sichtungen vergessen" data-uk="Забути мої спостереження">Forget my sightings</button>
     </section>
 
     <section class="group">
-      <h3 data-de="Akku">Battery</h3>
-      <label class="check"><input type="checkbox" id="batteryIn"><span data-de="Akku sparen: den Himmel seltener neu zeichnen, solange das Handy ruhig ist">Save battery: redraw the sky less often while the phone is still</span><span class="count"></span></label>
+      <h3 data-de="Akku" data-uk="Акумулятор">Battery</h3>
+      <label class="check"><input type="checkbox" id="batteryIn"><span data-de="Akku sparen: den Himmel seltener neu zeichnen, solange das Handy ruhig ist" data-uk="Економити заряд: рідше перемальовувати небо, поки телефон нерухомий">Save battery: redraw the sky less often while the phone is still</span><span class="count"></span></label>
     </section>
 
     <section class="group">
-      <h3 data-de="Schriftgröße">Text size</h3>
-      <div class="seg seg3" id="textIn" role="radiogroup" aria-label="Text size" data-de-aria-label="Schriftgröße"></div>
+      <h3 data-de="Schriftgröße" data-uk="Розмір тексту">Text size</h3>
+      <div class="seg seg3" id="textIn" role="radiogroup" aria-label="Text size" data-de-aria-label="Schriftgröße" data-uk-aria-label="Розмір тексту"></div>
     </section>
 
     <section class="group">
-      <h3>Language · Sprache</h3>
-      <div class="seg seg3" id="langIn" role="radiogroup" aria-label="Language" data-de-aria-label="Sprache"></div>
+      <h3>Language · Sprache · Мова</h3>
+      <div class="seg" id="langIn" role="radiogroup" aria-label="Language" data-de-aria-label="Sprache" data-uk-aria-label="Мова"></div>
     </section>
 
     <section class="group" id="installGroup" hidden>
-      <h3 data-de="Als App installieren">Install as an app</h3>
+      <h3 data-de="Als App installieren" data-uk="Установити як застосунок">Install as an app</h3>
       <p class="small" id="installNote"></p>
-      <button class="secondary" id="installBtn" data-de="App installieren" hidden>Install app</button>
+      <button class="secondary" id="installBtn" data-de="App installieren" data-uk="Установити застосунок" hidden>Install app</button>
     </section>
 
     <section class="group faq">
-      <h3 data-de="Hilfe">Help</h3>
-      <button class="secondary" id="guideBtn" data-de="Kurzanleitung noch einmal zeigen">Show the quick guide again</button>
-      <details><summary data-de="Warum sehe ich einen Satelliten nicht, den die App zeigt?">Why can't I see a satellite the app shows?</summary>
-        <p class="small" data-de="Vielleicht ist er im Erdschatten (ein blauer Punkt), zu schwach für deinen Himmel, von Dämmerung oder Mondlicht überstrahlt oder hinter Wolken. Satelliten wirken außerdem am hellsten, wenn die Sonne hinter dir steht. Wenn alles verschoben wirkt, richte den Kompass mit ◎ aus.">It may be in Earth's shadow (a blue dot), too faint for your sky, washed out by twilight or moonlight, or behind clouds. Satellites also look brightest with the Sun behind you. If everything seems shifted, line up the compass with ◎.</p></details>
-      <details><summary data-de="Was bedeutet Magnitude?">What does magnitude mean?</summary>
-        <p class="small" data-de="Die Helligkeitsskala der Astronomie: Kleinere Zahlen sind heller. Die Venus hat etwa −4, die hellsten Sterne etwa 0, und Magnitude 6 ist das Schwächste, was man an einem sehr dunklen Himmel sieht.">Astronomers' brightness scale, where lower numbers are brighter. Venus is about −4, the brightest stars around 0, and magnitude 6 is the faintest you can see in a very dark sky.</p></details>
-      <details><summary data-de="Wie genau ist das?">How accurate is it?</summary>
-        <p class="small" data-de="Die Positionen stimmen meist auf Bruchteile eines Grads, weil die Satellitendaten alle paar Stunden aktualisiert werden. Der größte Fehler ist der Kompass des Handys, und den behebt das Ausrichten mit ◎. Die Helligkeit ist eine Schätzung, meist auf etwa eine Magnitude genau. Mit „Gesehen?“ auf der Karte kannst du sie korrigieren.">Positions are usually within a fraction of a degree, because the satellite data updates every few hours. The phone's compass is the biggest error, which aligning with ◎ fixes. Brightness is an estimate, usually within about one magnitude. The “Did you see it?” buttons on the card let you correct it.</p></details>
-      <details><summary data-de="Funktioniert es ohne Empfang?">Does it work without signal?</summary>
-        <p class="small" data-de="Ja. Sobald du die App einmal mit Empfang geöffnet hast, sind sie und ihre Satellitendaten auf deinem Handy gespeichert. Daten, die älter als eine Woche sind, werden ungenauer.">Yes. Once you've opened it with signal, the app and its satellite data are saved on your phone. Data older than a week gets less accurate.</p></details>
-      <details><summary data-de="Warum springt die Ansicht, wenn ich senkrecht nach oben zeige?">Why does the view jump when I point straight up?</summary>
-        <p class="small" data-de="Vielleicht wechselt dein Handy zwischen Hoch- und Querformat. Schalte die automatische Drehung aus, während du die App nutzt.">Your phone may be switching between portrait and landscape. Turn on rotation lock while you use the app.</p></details>
+      <h3 data-de="Hilfe" data-uk="Довідка">Help</h3>
+      <button class="secondary" id="guideBtn" data-de="Kurzanleitung noch einmal zeigen" data-uk="Показати коротку інструкцію ще раз">Show the quick guide again</button>
+      <details><summary data-de="Warum sehe ich einen Satelliten nicht, den die App zeigt?" data-uk="Чому я не бачу супутник, який показує застосунок?">Why can't I see a satellite the app shows?</summary>
+        <p class="small" data-de="Vielleicht ist er im Erdschatten (ein blauer Punkt), zu schwach für deinen Himmel, von Dämmerung oder Mondlicht überstrahlt oder hinter Wolken. Satelliten wirken außerdem am hellsten, wenn die Sonne hinter dir steht. Wenn alles verschoben wirkt, richte den Kompass mit ◎ aus." data-uk="Можливо, він у тіні Землі (синя точка), заслабкий для твого неба, губиться в сутінках чи місячному світлі або ховається за хмарами. До того ж супутники найяскравіші, коли Сонце в тебе за спиною. Якщо все здається зсунутим, вирівняй компас кнопкою ◎.">It may be in Earth's shadow (a blue dot), too faint for your sky, washed out by twilight or moonlight, or behind clouds. Satellites also look brightest with the Sun behind you. If everything seems shifted, line up the compass with ◎.</p></details>
+      <details><summary data-de="Was bedeutet Magnitude?" data-uk="Що таке зоряна величина?">What does magnitude mean?</summary>
+        <p class="small" data-de="Die Helligkeitsskala der Astronomie: Kleinere Zahlen sind heller. Die Venus hat etwa −4, die hellsten Sterne etwa 0, und Magnitude 6 ist das Schwächste, was man an einem sehr dunklen Himmel sieht." data-uk="Шкала яскравості в астрономії, де менші числа означають яскравіші об’єкти. Венера має близько −4, найяскравіші зорі близько 0, а зоряна величина 6 є межею того, що можна побачити на дуже темному небі.">Astronomers' brightness scale, where lower numbers are brighter. Venus is about −4, the brightest stars around 0, and magnitude 6 is the faintest you can see in a very dark sky.</p></details>
+      <details><summary data-de="Wie genau ist das?" data-uk="Наскільки це точно?">How accurate is it?</summary>
+        <p class="small" data-de="Die Positionen stimmen meist auf Bruchteile eines Grads, weil die Satellitendaten alle paar Stunden aktualisiert werden. Der größte Fehler ist der Kompass des Handys, und den behebt das Ausrichten mit ◎. Die Helligkeit ist eine Schätzung, meist auf etwa eine Magnitude genau. Mit „Gesehen?“ auf der Karte kannst du sie korrigieren." data-uk="Положення зазвичай точні до частки градуса, бо дані про супутники оновлюються кожні кілька годин. Найбільша похибка в компасі телефону, і її виправляє вирівнювання кнопкою ◎. Яскравість є оцінкою, зазвичай з точністю до однієї зоряної величини. Кнопки «Видно?» на картці дають змогу її уточнити.">Positions are usually within a fraction of a degree, because the satellite data updates every few hours. The phone's compass is the biggest error, which aligning with ◎ fixes. Brightness is an estimate, usually within about one magnitude. The “Did you see it?” buttons on the card let you correct it.</p></details>
+      <details><summary data-de="Funktioniert es ohne Empfang?" data-uk="Чи працює без зв’язку?">Does it work without signal?</summary>
+        <p class="small" data-de="Ja. Sobald du die App einmal mit Empfang geöffnet hast, sind sie und ihre Satellitendaten auf deinem Handy gespeichert. Daten, die älter als eine Woche sind, werden ungenauer." data-uk="Так. Після першого відкриття зі зв’язком застосунок і дані про супутники зберігаються на телефоні. Дані, старші за тиждень, стають менш точними.">Yes. Once you've opened it with signal, the app and its satellite data are saved on your phone. Data older than a week gets less accurate.</p></details>
+      <details><summary data-de="Warum springt die Ansicht, wenn ich senkrecht nach oben zeige?" data-uk="Чому вигляд стрибає, коли я наводжу телефон прямо вгору?">Why does the view jump when I point straight up?</summary>
+        <p class="small" data-de="Vielleicht wechselt dein Handy zwischen Hoch- und Querformat. Schalte die automatische Drehung aus, während du die App nutzt." data-uk="Можливо, телефон перемикається між книжковою та альбомною орієнтацією. Увімкни блокування повороту екрана, поки користуєшся застосунком.">Your phone may be switching between portrait and landscape. Turn on rotation lock while you use the app.</p></details>
     </section>
   </div>
 </div>
@@ -234,39 +234,39 @@
     <div class="guide-step" id="guideStep"></div>
     <h2 id="guideTitle"></h2>
     <p id="guideText"></p>
-    <div class="guide-actions"><button class="linkbtn" id="guideSkip" data-de="Überspringen">Skip</button><button class="primary" id="guideNext">Next</button></div>
+    <div class="guide-actions"><button class="linkbtn" id="guideSkip" data-de="Überspringen" data-uk="Пропустити">Skip</button><button class="primary" id="guideNext">Next</button></div>
   </div>
 </div>
 
 <div class="overlay page" id="details" role="dialog" aria-modal="true" aria-labelledby="detName" hidden>
   <div class="intro det">
-    <div class="panel-head"><button class="linkbtn" id="detBack" data-de="‹ Zurück zum Himmel">‹ Back to sky</button><button class="linkbtn" id="detFav" aria-pressed="false">☆ Add to favorites</button></div>
+    <div class="panel-head"><button class="linkbtn" id="detBack" data-de="‹ Zurück zum Himmel" data-uk="‹ Назад до неба">‹ Back to sky</button><button class="linkbtn" id="detFav" aria-pressed="false">☆ Add to favorites</button></div>
     <h2 id="detName"></h2>
     <div class="chips" id="detChips"></div>
-    <section class="group"><h3 data-de="So sieht er aus">What it looks like</h3>
-      <canvas class="model3d" id="model3d" aria-label="3D model of the satellite. Drag to turn it." data-de-aria-label="3D-Modell des Satelliten. Zum Drehen ziehen."></canvas>
-      <canvas class="model3d" id="modelGL" aria-label="NASA 3D model. Drag to turn it, pinch to zoom." data-de-aria-label="3D-Modell der NASA. Zum Drehen ziehen, mit zwei Fingern zoomen." hidden></canvas>
+    <section class="group"><h3 data-de="So sieht er aus" data-uk="Який він на вигляд">What it looks like</h3>
+      <canvas class="model3d" id="model3d" aria-label="3D model of the satellite. Drag to turn it." data-de-aria-label="3D-Modell des Satelliten. Zum Drehen ziehen." data-uk-aria-label="3D-модель супутника. Тягни, щоб обертати."></canvas>
+      <canvas class="model3d" id="modelGL" aria-label="NASA 3D model. Drag to turn it, pinch to zoom." data-de-aria-label="3D-Modell der NASA. Zum Drehen ziehen, mit zwei Fingern zoomen." data-uk-aria-label="3D-модель NASA. Тягни, щоб обертати, зводь або розводь пальці, щоб масштабувати." hidden></canvas>
       <p class="small" id="modelNote"></p>
       <button class="secondary" id="modelDetailBtn" hidden></button></section>
-    <section class="group"><h3 id="detNowH" data-de="Gerade jetzt">Right now</h3><dl id="detNow"></dl></section>
-    <section class="group"><h3 data-de="Steckbrief">About</h3><dl id="detAbout"></dl></section>
-    <section class="group"><h3 data-de="Umlaufbahn">Orbit</h3><dl id="detOrbit"></dl></section>
-    <section class="group"><h3 data-de="Nächste Überflüge bei dir">Next passes over you</h3><div id="detPasses"></div></section>
-    <p class="small" data-de="Bahndaten von CelesTrak. Eigentümer, Startdatum und Startplatz aus dem Satellitenkatalog von CelesTrak.">Orbit data from CelesTrak. Owner, launch date and site from the CelesTrak satellite catalog.</p>
+    <section class="group"><h3 id="detNowH" data-de="Gerade jetzt" data-uk="Саме зараз">Right now</h3><dl id="detNow"></dl></section>
+    <section class="group"><h3 data-de="Steckbrief" data-uk="Про супутник">About</h3><dl id="detAbout"></dl></section>
+    <section class="group"><h3 data-de="Umlaufbahn" data-uk="Орбіта">Orbit</h3><dl id="detOrbit"></dl></section>
+    <section class="group"><h3 data-de="Nächste Überflüge bei dir" data-uk="Найближчі прольоти над тобою">Next passes over you</h3><div id="detPasses"></div></section>
+    <p class="small" data-de="Bahndaten von CelesTrak. Eigentümer, Startdatum und Startplatz aus dem Satellitenkatalog von CelesTrak." data-uk="Дані про орбіти з CelesTrak. Власник, дата й місце запуску з каталогу супутників CelesTrak.">Orbit data from CelesTrak. Owner, launch date and site from the CelesTrak satellite catalog.</p>
   </div>
 </div>
 
 <div class="overlay globe" id="globe" role="dialog" aria-modal="true" aria-labelledby="globeTitle" hidden>
-  <canvas id="globeGL" aria-label="3D globe with every satellite" data-de-aria-label="3D-Globus mit allen Satelliten"></canvas>
+  <canvas id="globeGL" aria-label="3D globe with every satellite" data-de-aria-label="3D-Globus mit allen Satelliten" data-uk-aria-label="3D-глобус з усіма супутниками"></canvas>
   <div class="globe-top">
-    <button class="linkbtn" id="globeBack" data-de="‹ Zurück zum Himmel">‹ Back to sky</button>
-    <h2 id="globeTitle" data-de="Erde">Earth</h2>
+    <button class="linkbtn" id="globeBack" data-de="‹ Zurück zum Himmel" data-uk="‹ Назад до неба">‹ Back to sky</button>
+    <h2 id="globeTitle" data-de="Erde" data-uk="Земля">Earth</h2>
     <span class="globe-time" id="globeTime"></span>
   </div>
   <div class="globe-bottom">
     <div id="globeInfo"></div>
-    <div class="seg seg3" id="globeSpeed" role="group" aria-label="Speed of time" data-de-aria-label="Zeitraffer">
-      <button data-s="1" aria-pressed="true" data-de="Echtzeit">Live</button><button data-s="60" aria-pressed="false">×60</button><button data-s="600" aria-pressed="false">×600</button>
+    <div class="seg seg3" id="globeSpeed" role="group" aria-label="Speed of time" data-de-aria-label="Zeitraffer" data-uk-aria-label="Швидкість часу">
+      <button data-s="1" aria-pressed="true" data-de="Echtzeit" data-uk="Наживо">Live</button><button data-s="60" aria-pressed="false">×60</button><button data-s="600" aria-pressed="false">×600</button>
     </div>
     <p class="small" id="globeNote"></p>
   </div>

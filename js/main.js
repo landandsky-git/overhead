@@ -37,7 +37,7 @@ async function init() {
   openLayer($("intro"), null);   // the start screen covers everything until Start is tapped
   loadColors(); resize(); sheetH();
   requestAnimationFrame(draw);
-  if (typeof satellite === "undefined") { $("status").textContent = tl("Couldn't load the orbit library. Check your connection and reload.", "Die Bahnberechnung ließ sich nicht laden. Prüfe deine Verbindung und lade neu."); return; }
+  if (typeof satellite === "undefined") { $("status").textContent = tl("Couldn't load the orbit library. Check your connection and reload.", "Die Bahnberechnung ließ sich nicht laden. Prüfe deine Verbindung und lade neu.", "Не вдалося завантажити розрахунок орбіт. Перевір з’єднання й перезавантаж сторінку."); return; }
   sendObs(); loadSkyline(); computeSky();
   setInterval(requestTick, 250);
   setInterval(updateCompassPill, 1000);

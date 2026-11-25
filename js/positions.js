@@ -21,7 +21,7 @@ async function startWorker() {
     else if (m.type === "lookback") applyLookback(m);
     else if (m.type === "eci") applyGlobePositions(m);
   };
-  w.onerror = () => { S.loading = tl("The satellite calculator didn't start. Reload the page.", "Die Satellitenberechnung ist nicht gestartet. Lade die Seite neu."); updateStatus(); };
+  w.onerror = () => { S.loading = tl("The satellite calculator didn't start. Reload the page.", "Die Satellitenberechnung ist nicht gestartet. Lade die Seite neu.", "Розрахунок супутників не запустився. Перезавантаж сторінку."); updateStatus(); };
   worker.real = w;
   for (const m of worker.queue.splice(0)) w.postMessage(m);
 }

@@ -32,11 +32,11 @@ function canAskSighting(sat, n) {
 // saw = false: it wasn't, so it must be fainter than that.
 function recordSighting(sat, saw) {
   const n = S.nowMap.get(sat.idx);
-  if (!n || !n.lit) { showHint(saw ? tl("Noted.", "Notiert.") : tl("That fits: it's in Earth's shadow right now, so it can't be seen.", "Das passt: Er ist gerade im Erdschatten und daher nicht zu sehen."), 5000); return; }
+  if (!n || !n.lit) { showHint(saw ? tl("Noted.", "Notiert.", "Записано.") : tl("That fits: it's in Earth's shadow right now, so it can't be seen.", "Das passt: Er ist gerade im Erdschatten und daher nicht zu sehen.", "Усе сходиться: зараз він у тіні Землі, тож його не видно."), 5000); return; }
   sightAsked.set(sat.id, Date.now());
   const L = limitNow(), target = saw ? L - 0.3 : L + 0.3;
   const delta = saw ? Math.min(0, target - n.mag) : Math.max(0, target - n.mag);
-  if (!delta) { showHint(tl(`Thanks. That matches the estimate (magnitude ${fmtN(n.mag, 1)}, your sky shows down to ${fmtN(L, 1)}).`, `Danke. Das passt zur Schätzung (Magnitude ${fmtN(n.mag, 1)}, dein Himmel zeigt bis ${fmtN(L, 1)}).`), 6000); return; }
+  if (!delta) { showHint(tl(`Thanks. That matches the estimate (magnitude ${fmtN(n.mag, 1)}, your sky shows down to ${fmtN(L, 1)}).`, `Danke. Das passt zur Schätzung (Magnitude ${fmtN(n.mag, 1)}, dein Himmel zeigt bis ${fmtN(L, 1)}).`, `Дякую. Це збігається з оцінкою (зоряна величина ${fmtN(n.mag, 1)}, твоє небо показує до ${fmtN(L, 1)}).`), 6000); return; }
   const key = kindOf(sat), clamp = (v, m) => Math.max(-m, Math.min(m, v));
   const own = SIGHT.sat[sat.id] || { d: sightingCorrection(sat), n: 0 };
   own.d = clamp(own.d + delta, 3); own.n++;
@@ -48,7 +48,8 @@ function recordSighting(sat, saw) {
   applySightings(s => s === sat || kindOf(s) === key);
   const by = fmtN(Math.abs(delta), 1), brighter = delta < 0, others = key !== "cube";
   showHint(tl(`Thanks. The app now expects ${sat.name} to look ${by} magnitudes ${brighter ? "brighter" : "fainter"}` + (others ? `, and other satellites of its kind a little ${brighter ? "brighter" : "fainter"} too.` : "."),
-              `Danke. Die App erwartet ${sat.name} jetzt um ${by} Magnituden ${brighter ? "heller" : "schwächer"}` + (others ? `, und andere Satelliten dieser Art etwas ${brighter ? "heller" : "schwächer"}.` : ".")), 8000);
+              `Danke. Die App erwartet ${sat.name} jetzt um ${by} Magnituden ${brighter ? "heller" : "schwächer"}` + (others ? `, und andere Satelliten dieser Art etwas ${brighter ? "heller" : "schwächer"}.` : "."),
+              `Дякую. Тепер застосунок вважає, що ${sat.name} на ${by} зв. вел. ${brighter ? "яскравіший" : "тьмяніший"}` + (others ? `, а інші супутники цього типу трохи ${brighter ? "яскравіші" : "тьмяніші"}.` : ".")), 8000);
 }
 
 // Re-apply corrections to the satellites that changed and tell the background worker.
@@ -66,21 +67,23 @@ function forgetSightings() {
   SIGHT.sat = {}; SIGHT.kind = {};
   store.set("sightings", SIGHT);
   applySightings();
-  showHint(tl("Your sightings are forgotten. Brightness is back to the app's estimates.", "Deine Sichtungen sind vergessen. Die Helligkeit folgt wieder den Schätzungen der App."), 5000);
+  showHint(tl("Your sightings are forgotten. Brightness is back to the app's estimates.", "Deine Sichtungen sind vergessen. Die Helligkeit folgt wieder den Schätzungen der App.", "Твої спостереження забуто. Яскравість знову рахується за оцінками застосунку."), 5000);
 }
 const sightingCount = () => Object.values(SIGHT.sat).reduce((t, s) => t + s.n, 0);
 // For the details panel: how far your sightings have moved this satellite's brightness.
 function sightingNote(sat) {
   const d = sat.m0base != null ? sat.m0 - sat.m0base : 0, by = fmtN(Math.abs(d), 1);
-  return Math.abs(d) < 0.05 ? "" : tl(` Adjusted ${by} ${d < 0 ? "brighter" : "fainter"} by your sightings.`, ` Durch deine Sichtungen um ${by} ${d < 0 ? "heller" : "schwächer"} angepasst.`);
+  return Math.abs(d) < 0.05 ? "" : tl(` Adjusted ${by} ${d < 0 ? "brighter" : "fainter"} by your sightings.`, ` Durch deine Sichtungen um ${by} ${d < 0 ? "heller" : "schwächer"} angepasst.`, ` З урахуванням твоїх спостережень: на ${by} зв. вел. ${d < 0 ? "яскравіше" : "тьмяніше"}.`);
 }
 function renderSightNote() {
   const n = sightingCount(), sats = Object.keys(SIGHT.sat).length;
   $("sightNote").textContent = n
     ? tl(`You've reported ${n} sighting${n === 1 ? "" : "s"} of ${sats} satellite${sats === 1 ? "" : "s"}. The app uses them to correct its brightness estimates for those satellites, and a little for others of the same kind.`,
-         `Du hast ${n} Sichtung${n === 1 ? "" : "en"} von ${sats} Satellit${sats === 1 ? "" : "en"} gemeldet. Die App korrigiert damit ihre Helligkeitsschätzung für diese Satelliten und ein wenig für andere derselben Art.`)
+         `Du hast ${n} Sichtung${n === 1 ? "" : "en"} von ${sats} Satellit${sats === 1 ? "" : "en"} gemeldet. Die App korrigiert damit ihre Helligkeitsschätzung für diese Satelliten und ein wenig für andere derselben Art.`,
+         `Збережено ${n} ${ukPlural(n, "твоє спостереження", "твої спостереження", "твоїх спостережень")} за ${sats} ${ukPlural(sats, "супутником", "супутниками", "супутниками")}. Застосунок використовує їх, щоб уточнити оцінки яскравості цих супутників і трохи також інших супутників того ж типу.`)
     : tl("When a satellite you've selected is up in a dark sky, the card asks whether you saw it. Your answers correct the app's brightness estimates.",
-         "Wenn ein ausgewählter Satellit am dunklen Himmel steht, fragt die Karte, ob du ihn gesehen hast. Deine Antworten korrigieren die Helligkeitsschätzungen der App.");
+         "Wenn ein ausgewählter Satellit am dunklen Himmel steht, fragt die Karte, ob du ihn gesehen hast. Deine Antworten korrigieren die Helligkeitsschätzungen der App.",
+         "Коли вибраний супутник стоїть на темному небі, картка питає, чи його видно. Твої відповіді уточнюють оцінки яскравості.");
   $("sightReset").hidden = !n;
 }
 

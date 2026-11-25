@@ -25,9 +25,9 @@ function sunBelow(t0, th) {
   return start == null ? null : { start, end: start + DAY };
 }
 const dayDate = t => { const d = new Date(t), other = d.getFullYear() !== new Date().getFullYear();   // the year only when it isn't this one
-  return d.toLocaleDateString(tl("en-GB", "de-DE"), { weekday: "short", day: "numeric", month: "short", ...(other ? { year: "numeric" } : {}) }); };
-const whereWord = (az, el) => el < 20 ? tl(`low in the ${compassName(az)}`, `tief im ${compassName(az)}`)
-  : el > 55 ? tl(`high in the ${compassName(az)}`, `hoch im ${compassName(az)}`) : tl(`in the ${compassName(az)}`, `im ${compassName(az)}`);
+  return d.toLocaleDateString(tl("en-GB", "de-DE", "uk-UA"), { weekday: "short", day: "numeric", month: "short", ...(other ? { year: "numeric" } : {}) }); };
+const whereWord = (az, el) => el < 20 ? tl(`low in the ${compassName(az)}`, `tief im ${compassName(az)}`, `низько на ${compassName(az)}`)
+  : el > 55 ? tl(`high in the ${compassName(az)}`, `hoch im ${compassName(az)}`, `високо на ${compassName(az)}`) : tl(`in the ${compassName(az)}`, `im ${compassName(az)}`, `на ${compassName(az)}`);
 const noonOf = t => { const d = new Date(t); d.setHours(12, 0, 0, 0); return +d; };
 
 // ---------- planets tonight ----------
@@ -49,16 +49,16 @@ function planetsTonight(t0) {
 }
 function planetWhen(p) {
   const s = p.spans, near = (a, b) => Math.abs(a - b) <= p.step;
-  if (s.length === 1 && near(s[0].start, p.win.start) && near(s[0].end, p.win.end)) return tl("all night", "die ganze Nacht");
-  return s.map(x => near(x.start, p.win.start) ? tl(`until ${fmtTime(x.end)}`, `bis ${fmtTime(x.end)}`)
-    : near(x.end, p.win.end) ? tl(`from ${fmtTime(x.start)}`, `ab ${fmtTime(x.start)}`) : `${fmtTime(x.start)}–${fmtTime(x.end)}`).join(tl(" and ", " und "));
+  if (s.length === 1 && near(s[0].start, p.win.start) && near(s[0].end, p.win.end)) return tl("all night", "die ganze Nacht", "усю ніч");
+  return s.map(x => near(x.start, p.win.start) ? tl(`until ${fmtTime(x.end)}`, `bis ${fmtTime(x.end)}`, `до ${fmtTime(x.end)}`)
+    : near(x.end, p.win.end) ? tl(`from ${fmtTime(x.start)}`, `ab ${fmtTime(x.start)}`, `з ${fmtTime(x.start)}`) : `${fmtTime(x.start)}–${fmtTime(x.end)}`).join(tl(" and ", " und ", " і "));
 }
 
 // ---------- close pairings: the Moon or a planet near another planet or a bright star ----------
 const PAIR_STARS = ["Aldebaran", "Regulus", "Spica", "Antares", "Pollux"];   // bright stars along the Moon's and planets' path
 const PLEIADES = { name: "Pleiades", ...precess(56.75 * D2R, 24.12 * D2R, new Date()) };
 const pairLimit = (a, b) => a.kind === "moon" || b.kind === "moon" ? (a.kind === "star" || b.kind === "star" ? 3 : 5) : (a.kind === "star" || b.kind === "star" ? 2 : 3);
-const objName = o => o.key === "Pleiades" ? tl("the Pleiades", "die Plejaden") : o.kind === "moon" ? tl("the Moon", "der Mond") : skyName(o.key);
+const objName = o => o.key === "Pleiades" ? tl("the Pleiades", "die Plejaden", "Плеяди") : o.kind === "moon" ? tl("the Moon", "der Mond", "Місяць") : skyName(o.key);
 function pairsAhead(t0, nights) {
   const stars = [...CATALOG.stars.filter(s => PAIR_STARS.includes(s.name)), PLEIADES], best = new Map();
   for (let n = 0; n < nights; n++) {
@@ -78,7 +78,8 @@ function pairsAhead(t0, nights) {
   return [...best.values()].sort((x, y) => x.t - y.t);
 }
 const pairText = p => tl(`${cap(objName(p.a))} and ${objName(p.b)} ${fmtN(p.sep, 1)}° apart, ${whereWord(p.a.az, p.a.el)}`,
-                          `${cap(objName(p.a))} und ${objName(p.b)} ${fmtN(p.sep, 1)}° auseinander, ${whereWord(p.a.az, p.a.el)}`);
+                          `${cap(objName(p.a))} und ${objName(p.b)} ${fmtN(p.sep, 1)}° auseinander, ${whereWord(p.a.az, p.a.el)}`,
+                          `${cap(objName(p.a))} і ${objName(p.b)} на відстані ${fmtN(p.sep, 1)}°, ${whereWord(p.a.az, p.a.el)}`);
 
 // ---------- meteor showers (IMO calendar; peaks shift by about a day from year to year) ----------
 // [name, German name, active from, peak, active until (month-day), ZHR at the peak, radiant RA and
@@ -95,6 +96,8 @@ const SHOWERS = [
   ["Geminids", "Geminiden", "12-04", "12-14", "12-20", 150, 112, 33, 1.3],
   ["Ursids", "Ursiden", "12-17", "12-22", "12-26", 10, 217, 76, 1],
 ];
+const SHOWERS_UK = { "Quadrantids": "Квадрантиди", "Lyrids": "Ліриди", "Eta Aquariids": "Ета-Акваріди", "Southern Delta Aquariids": "Південні Дельта-Акваріди",
+  "Perseids": "Персеїди", "Draconids": "Драконіди", "Orionids": "Оріоніди", "Leonids": "Леоніди", "Geminids": "Гемініди", "Ursids": "Урсиди" };
 const mdTime = (year, md) => { const [m, d] = md.split("-").map(Number); return Date.UTC(year, m - 1, d, 12); };
 // Where t falls in a shower's season: days from its nearest peak, and whether it is active then.
 function showerAt(s, t) {
@@ -108,7 +111,7 @@ function showerAt(s, t) {
     const d = (t - peak) / DAY;
     if (!best || Math.abs(d) < Math.abs(best.days)) best = { days: d, peak, active: t >= from && t <= until + DAY };
   }
-  return { ...best, name: tl(s[0], s[1]), zhr: best.active ? Math.max(2, s[5] * Math.exp(-Math.abs(best.days) / s[8])) : 0,
+  return { ...best, name: tl(s[0], s[1], SHOWERS_UK[s[0]]), zhr: best.active ? Math.max(2, s[5] * Math.exp(-Math.abs(best.days) / s[8])) : 0,
            radiant: precess(s[6] * D2R, s[7] * D2R, new Date(t)) };
 }
 // Tonight's showers worth mentioning: how many meteors an hour you might see at best, when the
@@ -131,12 +134,12 @@ function showersTonight(t0) {
   return out;
 }
 function showerText(sh) {
-  const peak = Math.abs(sh.days) < 0.75 ? tl("peak tonight", "Höhepunkt heute Nacht")
-    : sh.days < 0 ? tl(`peak ${fmtDate(new Date(sh.peak))}`, `Höhepunkt am ${fmtDate(new Date(sh.peak))}`) : tl("past its peak", "nach dem Höhepunkt");
-  if (!sh.best) return tl(`${sh.name} (${peak}): their radiant stays too low here tonight`, `${sh.name} (${peak}): ihr Ausstrahlungspunkt bleibt hier heute zu tief`);
+  const peak = Math.abs(sh.days) < 0.75 ? tl("peak tonight", "Höhepunkt heute Nacht", "пік сьогодні вночі")
+    : sh.days < 0 ? tl(`peak ${fmtDate(new Date(sh.peak))}`, `Höhepunkt am ${fmtDate(new Date(sh.peak))}`, `пік ${fmtDate(new Date(sh.peak))}`) : tl("past its peak", "nach dem Höhepunkt", "після піку");
+  if (!sh.best) return tl(`${sh.name} (${peak}): their radiant stays too low here tonight`, `${sh.name} (${peak}): ihr Ausstrahlungspunkt bleibt hier heute zu tief`, `${sh.name} (${peak}): радіант сьогодні тут надто низько`);
   const n = sh.best.rate;
-  const rate = n >= 10 ? tl(`up to about ${fmtN(Math.round(n / 5) * 5)} an hour`, `bis zu etwa ${fmtN(Math.round(n / 5) * 5)} pro Stunde`) : n >= 2 ? tl(`a few an hour`, `einige pro Stunde`) : tl("only the odd one", "nur vereinzelt");
-  return tl(`${sh.name} (${peak}): ${rate}, best around ${fmtTime(sh.best.t)}`, `${sh.name} (${peak}): ${rate}, am besten gegen ${fmtTime(sh.best.t)}`);
+  const rate = n >= 10 ? tl(`up to about ${fmtN(Math.round(n / 5) * 5)} an hour`, `bis zu etwa ${fmtN(Math.round(n / 5) * 5)} pro Stunde`, `приблизно до ${fmtN(Math.round(n / 5) * 5)} за годину`) : n >= 2 ? tl(`a few an hour`, `einige pro Stunde`, `кілька за годину`) : tl("only the odd one", "nur vereinzelt", "лише поодинокі");
+  return tl(`${sh.name} (${peak}): ${rate}, best around ${fmtTime(sh.best.t)}`, `${sh.name} (${peak}): ${rate}, am besten gegen ${fmtTime(sh.best.t)}`, `${sh.name} (${peak}): ${rate}, найкраще близько ${fmtTime(sh.best.t)}`);
 }
 
 // ---------- New and Full Moon ----------
@@ -194,13 +197,14 @@ function eclipseHere(ec) {
 }
 function eclipseText(ec, here) {
   if (ec.kind === "L") return ({
-    T: tl("Total lunar eclipse: the Moon turns coppery red", "Totale Mondfinsternis: Der Mond färbt sich kupferrot"),
-    P: tl("Partial lunar eclipse: part of the Moon darkens", "Partielle Mondfinsternis: Ein Teil des Mondes verdunkelt sich"),
-    N: tl("Penumbral lunar eclipse: only faint shading on the Moon", "Halbschatten-Mondfinsternis: nur eine leichte Abschattung des Mondes"),
-  })[ec.type] + tl(`, around ${fmtTime(here.t)}`, `, gegen ${fmtTime(here.t)}`);
-  const pct = Math.max(5, Math.round(here.cov * 20) * 5), elsewhere = { T: tl("total", "total"), A: tl("annular", "ringförmig"), H: tl("total or annular", "total oder ringförmig") }[ec.type];
+    T: tl("Total lunar eclipse: the Moon turns coppery red", "Totale Mondfinsternis: Der Mond färbt sich kupferrot", "Повне місячне затемнення: Місяць стає мідно-червоним"),
+    P: tl("Partial lunar eclipse: part of the Moon darkens", "Partielle Mondfinsternis: Ein Teil des Mondes verdunkelt sich", "Часткове місячне затемнення: частина Місяця темніє"),
+    N: tl("Penumbral lunar eclipse: only faint shading on the Moon", "Halbschatten-Mondfinsternis: nur eine leichte Abschattung des Mondes", "Півтіньове місячне затемнення: Місяць лише трохи тьмяніє"),
+  })[ec.type] + tl(`, around ${fmtTime(here.t)}`, `, gegen ${fmtTime(here.t)}`, `, близько ${fmtTime(here.t)}`);
+  const pct = Math.max(5, Math.round(here.cov * 20) * 5), elsewhere = { T: tl("total", "total", "повне"), A: tl("annular", "ringförmig", "кільцеподібне"), H: tl("total or annular", "total oder ringförmig", "повне або кільцеподібне") }[ec.type];
   return tl(`Partial solar eclipse: about ${pct}% of the Sun covered around ${fmtTime(here.t)}${elsewhere ? ` (${elsewhere} elsewhere)` : ""}. Only ever look with eclipse glasses.`,
-            `Partielle Sonnenfinsternis: etwa ${pct} % der Sonne bedeckt, gegen ${fmtTime(here.t)}${elsewhere ? ` (anderswo ${elsewhere})` : ""}. Nur mit Finsternisbrille hinsehen.`);
+            `Partielle Sonnenfinsternis: etwa ${pct} % der Sonne bedeckt, gegen ${fmtTime(here.t)}${elsewhere ? ` (anderswo ${elsewhere})` : ""}. Nur mit Finsternisbrille hinsehen.`,
+            `Часткове сонячне затемнення: близько ${fmtTime(here.t)} закрито приблизно ${pct} % Сонця${elsewhere ? ` (в інших місцях ${elsewhere})` : ""}. Дивися лише крізь спеціальні окуляри для затемнень.`);
 }
 
 // ---------- aurora: NOAA's Kp index forecast (3-hour blocks), read straight from NOAA ----------
@@ -230,16 +234,18 @@ function auroraOutlook(win) {
   const ml = geomagLat(S.loc.lat, S.loc.lon), need = Math.max(0, (66 - Math.abs(ml)) / 2.2);
   const tonight = aurora.filter(b => b.t + 3 * 3600e3 > win.start && b.t < win.end), best = tonight.reduce((a, b) => !a || b.kp > a.kp ? b : a, null);
   const now = aurora.filter(b => b.t <= Date.now()).pop() || null;
-  return { need, best, now, north: ml >= 0, side: ml >= 0 ? tl("north", "Norden") : tl("south", "Süden") };
+  return { need, best, now, north: ml >= 0, side: ml >= 0 ? tl("north", "Norden", "півночі") : tl("south", "Süden", "півдні") };
 }
 function auroraText(o) {
-  if (!o.best) return tl("No forecast for tonight yet.", "Noch keine Vorhersage für heute Nacht.");
+  if (!o.best) return tl("No forecast for tonight yet.", "Noch keine Vorhersage für heute Nacht.", "Прогнозу на цю ніч ще немає.");
   const kp = fmtN(o.best.kp, 1), need = fmtN(Math.round(o.need * 2) / 2, 1);
   if (o.best.kp >= o.need) return tl(`Possible! Kp up to ${kp} around ${fmtTime(o.best.t + 90 * 60e3)}: look low in the ${o.side}, away from lights`,
-                                     `Möglich! Kp bis ${kp} gegen ${fmtTime(o.best.t + 90 * 60e3)}: schau tief nach ${o.side}, weg von Lichtern`);
+                                     `Möglich! Kp bis ${kp} gegen ${fmtTime(o.best.t + 90 * 60e3)}: schau tief nach ${o.side}, weg von Lichtern`,
+                                     `Можливо! Kp до ${kp} близько ${fmtTime(o.best.t + 90 * 60e3)}: дивися низько на ${o.side}, подалі від вогнів`);
   if (o.best.kp >= o.need - 1) return tl(`A camera might catch a faint glow low in the ${o.side} (Kp up to ${kp}; about ${need} needed here)`,
-                                         `Eine Kamera könnte ein schwaches Leuchten tief im ${o.side} einfangen (Kp bis ${kp}; hier etwa ${need} nötig)`);
-  return tl(`Unlikely here tonight (Kp up to ${kp}; about ${need} needed)`, `Heute Nacht hier unwahrscheinlich (Kp bis ${kp}; etwa ${need} nötig)`);
+                                         `Eine Kamera könnte ein schwaches Leuchten tief im ${o.side} einfangen (Kp bis ${kp}; hier etwa ${need} nötig)`,
+                                         `Камера може вловити слабке сяйво низько на ${o.side} (Kp до ${kp}; тут потрібно близько ${need})`);
+  return tl(`Unlikely here tonight (Kp up to ${kp}; about ${need} needed)`, `Heute Nacht hier unwahrscheinlich (Kp bis ${kp}; etwa ${need} nötig)`, `Сьогодні вночі тут малоймовірно (Kp до ${kp}; потрібно близько ${need})`);
 }
 
 // ---------- comets: orbits for the brightest ones (data/comets.json, from NASA JPL, built daily) ----------
@@ -298,7 +304,8 @@ function cometsTonight(t0) {
   return out.sort((a, b) => a.best.mag - b.best.mag);
 }
 const cometText = c => tl(`${c.name}: magnitude ${fmtN(c.best.mag, 1)}, ${c.best.mag <= 5.5 ? "visible to the eye in a dark sky" : "binoculars"}; best around ${fmtTime(c.best.t)} ${whereWord(c.best.az, c.best.el)}`,
-                          `${c.name}: Magnitude ${fmtN(c.best.mag, 1)}, ${c.best.mag <= 5.5 ? "an dunklem Himmel mit bloßem Auge" : "Fernglas"}; am besten gegen ${fmtTime(c.best.t)} ${whereWord(c.best.az, c.best.el)}`);
+                          `${c.name}: Magnitude ${fmtN(c.best.mag, 1)}, ${c.best.mag <= 5.5 ? "an dunklem Himmel mit bloßem Auge" : "Fernglas"}; am besten gegen ${fmtTime(c.best.t)} ${whereWord(c.best.az, c.best.el)}`,
+                          `${c.name}: зоряна величина ${fmtN(c.best.mag, 1)}, ${c.best.mag <= 5.5 ? "на темному небі видно неозброєним оком" : "у бінокль"}; найкраще близько ${fmtTime(c.best.t)} ${whereWord(c.best.az, c.best.el)}`);
 
 // ---------- putting it together, worked out at most once every 20 minutes ----------
 let guideCache = null;
@@ -313,10 +320,10 @@ function skyGuide() {
     pairsTonight: pairs.filter(p => p.t <= tonightEnd),
     coming: [
       ...pairs.filter(p => p.t > tonightEnd).map(p => ({ t: p.t, text: pairText(p) })),
-      ...moonPhasesAhead(now, 30).map(m => ({ t: m.t, text: m.full ? tl("Full Moon: bright nights, fainter satellites hard to see", "Vollmond: helle Nächte, schwächere Satelliten schwer zu sehen")
-                                                                : tl("New Moon: the darkest nights of the month", "Neumond: die dunkelsten Nächte des Monats") })),
+      ...moonPhasesAhead(now, 30).map(m => ({ t: m.t, text: m.full ? tl("Full Moon: bright nights, fainter satellites hard to see", "Vollmond: helle Nächte, schwächere Satelliten schwer zu sehen", "Повня: світлі ночі, слабші супутники важко побачити")
+                                                                : tl("New Moon: the darkest nights of the month", "Neumond: die dunkelsten Nächte des Monats", "Молодик: найтемніші ночі місяця") })),
       ...SHOWERS.map(s => showerAt(s, now)).map((sh, i) => ({ sh, s: SHOWERS[i] })).filter(({ sh }) => sh.days < -0.75 && sh.days > -30)
-        .map(({ sh, s }) => ({ t: sh.peak, text: tl(`${sh.name} peak: up to ${s[5]} meteors an hour in a perfect sky`, `Höhepunkt der ${sh.name}: bis zu ${s[5]} Meteore pro Stunde bei perfektem Himmel`) })),
+        .map(({ sh, s }) => ({ t: sh.peak, text: tl(`${sh.name} peak: up to ${s[5]} meteors an hour in a perfect sky`, `Höhepunkt der ${sh.name}: bis zu ${s[5]} Meteore pro Stunde bei perfektem Himmel`, `${sh.name}, пік: до ${s[5]} метеорів за годину за ідеального неба`) })),
       ...ECLIPSES.filter(ec => ec.t > now && ec.t < now + 450 * DAY).map(ec => ({ ec, here: eclipseHere(ec) })).filter(x => x.here)
         .map(({ ec, here }) => ({ t: here.t, text: eclipseText(ec, here), long: true })),
     ].sort((a, b) => a.t - b.t),
@@ -330,16 +337,16 @@ function skyGuideLines() {
   const g = skyGuide(); if (!g) return "";
   const line = (k, v) => `<div class="tn-line"><span class="tn-k">${k}</span><span>${v}</span></div>`;
   let html = "";
-  if (g.planets.length) html += line(tl("Planets", "Planeten"), g.planets.map(p => `${esc(skyName(p.name))} ${planetWhen(p)}, ${whereWord(p.best.az, p.best.el)}`).join("<br>"));
-  if (g.pairsTonight.length) html += line(tl("Pairs", "Paare"), g.pairsTonight.map(p => `${pairText(p)} ${tl("around", "gegen")} ${fmtTime(p.t)}`).join("<br>"));
-  if (g.showers.length) html += line(tl("Meteors", "Meteore"), g.showers.map(showerText).join("<br>"));
-  if (g.comets.length) html += line(tl("Comets", "Kometen"), g.comets.map(cometText).map(esc).join("<br>"));
-  if (g.aurora) html += line(tl("Aurora", "Polarlicht"), auroraText(g.aurora));
+  if (g.planets.length) html += line(tl("Planets", "Planeten", "Планети"), g.planets.map(p => `${esc(skyName(p.name))} ${planetWhen(p)}, ${whereWord(p.best.az, p.best.el)}`).join("<br>"));
+  if (g.pairsTonight.length) html += line(tl("Pairs", "Paare", "Зближення"), g.pairsTonight.map(p => `${pairText(p)} ${tl("around", "gegen", "близько")} ${fmtTime(p.t)}`).join("<br>"));
+  if (g.showers.length) html += line(tl("Meteors", "Meteore", "Метеори"), g.showers.map(showerText).join("<br>"));
+  if (g.comets.length) html += line(tl("Comets", "Kometen", "Комети"), g.comets.map(cometText).map(esc).join("<br>"));
+  if (g.aurora) html += line(tl("Aurora", "Polarlicht", "Полярне сяйво"), auroraText(g.aurora));
   return html;
 }
 function skyGuideComing() {
   const g = skyGuide(); if (!g || !g.coming.length) return "";
-  return `<h4 class="tn-h">${tl("Coming up", "Demnächst")}</h4><div class="coming">` +
+  return `<h4 class="tn-h">${tl("Coming up", "Demnächst", "Незабаром")}</h4><div class="coming">` +
     g.coming.map(c => `<div class="up-line"><span class="up-d">${dayDate(c.t)}</span><span>${c.text}</span></div>`).join("") + `</div>`;
 }
 
@@ -361,7 +368,7 @@ function drawSkyGuide(P) {
       if (pen) ctx.lineTo(q.x, q.y); else { ctx.moveTo(q.x, q.y); pen = true; }
     }
     ctx.stroke(); ctx.lineWidth = 1;
-    const q = P(enu(sky.aurora, 12)); if (q.front) { ctx.font = `600 11px ${FONT_M}`; ctx.fillStyle = "rgba(120, 240, 170, 0.9)"; ctx.fillText(tl("AURORA?", "POLARLICHT?"), q.x - 30, q.y); }
+    const q = P(enu(sky.aurora, 12)); if (q.front) { ctx.font = `600 11px ${FONT_M}`; ctx.fillStyle = "rgba(120, 240, 170, 0.9)"; ctx.fillText(tl("AURORA?", "POLARLICHT?", "ПОЛЯРНЕ СЯЙВО?"), q.x - 30, q.y); }
   }
   ctx.font = `10px ${FONT_M}`;
   for (const r of sky.radiants || []) {   // a little burst where the meteors seem to come from

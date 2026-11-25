@@ -116,7 +116,8 @@ async function startSensors() {
   if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
     const p = await DeviceOrientationEvent.requestPermission();
     if (p !== "granted") throw new Error(tl("Motion access was denied. Allow motion sensors for this site in your browser settings, then try again.",
-                                            "Zugriff auf die Bewegungssensoren verweigert. Erlaube sie für diese Seite in den Browser-Einstellungen und versuche es dann noch einmal."));
+                                            "Zugriff auf die Bewegungssensoren verweigert. Erlaube sie für diese Seite in den Browser-Einstellungen und versuche es dann noch einmal.",
+                                            "Доступ до датчиків руху заборонено. Дозволь датчики руху для цього сайту в налаштуваннях браузера й спробуй ще раз."));
   }
   if (!SENS.listening) {
     window.addEventListener("deviceorientationabsolute", onAbsolute);
@@ -128,7 +129,7 @@ async function startSensors() {
   setTimeout(() => {
     if (S.anyEvent || S.mode !== "sensor") return;
     S.mode = "drag"; updateModeUI();
-    showHint(tl("No motion sensors found. Drag the sky to look around.", "Keine Bewegungssensoren gefunden. Zieh den Himmel, um dich umzusehen."), 5000);
+    showHint(tl("No motion sensors found. Drag the sky to look around.", "Keine Bewegungssensoren gefunden. Zieh den Himmel, um dich umzusehen.", "Датчиків руху не знайдено. Перетягуй небо, щоб роззирнутися."), 5000);
   }, 2500);
 }
 
@@ -141,21 +142,21 @@ async function setMotion(on) {
     try { await startSensors(); }
     catch (e) { showHint(e.message, 6000); updateModeUI(); return; }
     SENS.started = false;
-    showHint(tl("Following your phone. Point it at the sky.", "Folgt deinem Handy. Richte es auf den Himmel."), 4000);
+    showHint(tl("Following your phone. Point it at the sky.", "Folgt deinem Handy. Richte es auf den Himmel.", "Стежить за телефоном. Наведи його на небо."), 4000);
   } else {
     if (S.R) { S.view.az = viewAz(S.R); S.view.el = Math.max(-10, Math.min(90, Math.asin(Math.max(-1, Math.min(1, -S.R[8]))) * R2D)); }
     if (CAM.on) await toggleCamera();   // the camera picture only lines up while following the phone
     if (ALIGN.on) closeAlign();
     S.mode = "drag";
-    showHint(tl("Drag the sky with your finger to look around.", "Zieh den Himmel mit dem Finger, um dich umzusehen."), 4000);
+    showHint(tl("Drag the sky with your finger to look around.", "Zieh den Himmel mit dem Finger, um dich umzusehen.", "Перетягуй небо пальцем, щоб роззирнутися."), 4000);
   }
   updateModeUI();
 }
 function updateModeUI() {
   const on = S.mode === "sensor", b = $("motionBtn");
   b.setAttribute("aria-pressed", on);
-  b.title = on ? tl("Following your phone: tap to drag the sky instead", "Folgt deinem Handy: tippen, um stattdessen den Himmel zu ziehen")
-               : tl("Dragging the sky: tap to follow your phone", "Himmel ziehen: tippen, um deinem Handy zu folgen");
+  b.title = on ? tl("Following your phone: tap to drag the sky instead", "Folgt deinem Handy: tippen, um stattdessen den Himmel zu ziehen", "Стежить за телефоном: торкнися, щоб натомість перетягувати небо")
+               : tl("Dragging the sky: tap to follow your phone", "Himmel ziehen: tippen, um deinem Handy zu folgen", "Перетягування неба: торкнися, щоб стежити за телефоном");
   $("camBtn").hidden = !on;   // the camera view follows the phone too
 }
 $("motionBtn").addEventListener("click", () => setMotion(S.mode !== "sensor"));
@@ -176,17 +177,18 @@ function updateCompassPill() {
 }
 $("compassPill").addEventListener("click", () => {
   showHint(tl("Wave your phone slowly in a figure-8 a few times, away from metal, cars and magnets. For the most accurate direction, line up on a star with ◎.",
-              "Schwenk dein Handy ein paar Mal langsam in Form einer Acht, fern von Metall, Autos und Magneten. Am genauesten wird die Richtung, wenn du sie mit ◎ an einem Stern ausrichtest."), 10000);
+              "Schwenk dein Handy ein paar Mal langsam in Form einer Acht, fern von Metall, Autos und Magneten. Am genauesten wird die Richtung, wenn du sie mit ◎ an einem Stern ausrichtest.",
+              "Кілька разів повільно поводи телефоном вісімкою, подалі від металу, автомобілів і магнітів. Найточніший напрямок дасть вирівнювання за зорею кнопкою ◎."), 10000);
   $("alignBtn").classList.add("spot"); setTimeout(() => $("alignBtn").classList.remove("spot"), 6000);
 });
 
 function getLocation() {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) return reject(new Error(tl("This browser can't share its location. Search for your town in Settings.", "Dieser Browser kann keinen Standort liefern. Suche deinen Ort in den Einstellungen.")));
+    if (!navigator.geolocation) return reject(new Error(tl("This browser can't share its location. Search for your town in Settings.", "Dieser Browser kann keinen Standort liefern. Suche deinen Ort in den Einstellungen.", "Цей браузер не може визначити місцезнаходження. Знайди своє місто в налаштуваннях.")));
     navigator.geolocation.getCurrentPosition(
       p => resolve({ lat: +p.coords.latitude.toFixed(4), lon: +p.coords.longitude.toFixed(4), h: p.coords.altitude || 0 }),
-      err => reject(new Error(err.code === 1 ? tl("Location access was denied. Search for your town in Settings instead.", "Standortzugriff verweigert. Suche stattdessen deinen Ort in den Einstellungen.")
-                                             : tl("Couldn't get your location. Search for your town in Settings.", "Dein Standort ließ sich nicht ermitteln. Suche deinen Ort in den Einstellungen."))),
+      err => reject(new Error(err.code === 1 ? tl("Location access was denied. Search for your town in Settings instead.", "Standortzugriff verweigert. Suche stattdessen deinen Ort in den Einstellungen.", "Доступ до місцезнаходження заборонено. Знайди натомість своє місто в налаштуваннях.")
+                                             : tl("Couldn't get your location. Search for your town in Settings.", "Dein Standort ließ sich nicht ermitteln. Suche deinen Ort in den Einstellungen.", "Не вдалося визначити місцезнаходження. Знайди своє місто в налаштуваннях."))),
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 });
   });
 }

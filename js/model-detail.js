@@ -12,7 +12,7 @@ const DETAILED = {
   iss: { file: "models/iss.glb", mb: 1.6, hide: /^(bendedtru|pCylinder)/, turn: [0, 0, Math.PI / 2] },
   hubble: { file: "models/hubble.glb", mb: 2.8 },
 };
-const offerText = d => tl(`Show NASA's detailed model (${fmtN(d.mb, 1)} MB download)`, `Detailliertes NASA-Modell zeigen (${fmtN(d.mb, 1)} MB Download)`);
+const offerText = d => tl(`Show NASA's detailed model (${fmtN(d.mb, 1)} MB download)`, `Detailliertes NASA-Modell zeigen (${fmtN(d.mb, 1)} MB Download)`, `Показати детальну модель NASA (завантаження ${fmtN(d.mb, 1)} МБ)`);
 const detail = { key: null, renderer: null, controls: null, scene: null, raf: 0, busy: false };
 const libUrl = path => new URL(path, document.baseURI).href;
 
@@ -29,7 +29,7 @@ async function openDetailedModel() {
   if (!detail.key || detail.busy) return;
   detail.busy = true;
   const btn = $("modelDetailBtn"), cv = $("modelGL"), key = detail.key;
-  btn.textContent = tl("Loading the detailed model…", "Detailliertes Modell wird geladen…");
+  btn.textContent = tl("Loading the detailed model…", "Detailliertes Modell wird geladen…", "Завантаження детальної моделі…");
   try {
     const THREE = await import("three");
     const [{ GLTFLoader }, { DRACOLoader }, { OrbitControls }] = await Promise.all([
@@ -66,10 +66,10 @@ async function openDetailedModel() {
       controls.update(); renderer.render(scene, camera);
     };
     loop();
-    btn.textContent = tl("Show the simple model", "Einfaches Modell zeigen");
-    $("modelNote").textContent = tl("3D model: NASA. Drag to turn it, pinch to zoom.", "3D-Modell: NASA. Zum Drehen ziehen, mit zwei Fingern zoomen.");
+    btn.textContent = tl("Show the simple model", "Einfaches Modell zeigen", "Показати просту модель");
+    $("modelNote").textContent = tl("3D model: NASA. Drag to turn it, pinch to zoom.", "3D-Modell: NASA. Zum Drehen ziehen, mit zwei Fingern zoomen.", "3D-модель: NASA. Тягни, щоб обертати, зводь або розводь пальці, щоб масштабувати.");
   } catch (e) {
-    btn.textContent = tl("Couldn't load the detailed model. Check your connection and try again.", "Das detaillierte Modell ließ sich nicht laden. Prüfe deine Verbindung und versuche es erneut.");
+    btn.textContent = tl("Couldn't load the detailed model. Check your connection and try again.", "Das detaillierte Modell ließ sich nicht laden. Prüfe deine Verbindung und versuche es erneut.", "Не вдалося завантажити детальну модель. Перевір з’єднання й спробуй ще раз.");
   } finally { detail.busy = false; }
 }
 

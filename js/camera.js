@@ -12,13 +12,13 @@ async function toggleCamera() {
     if (!ALIGN.on) stopCamera();
     setZoom(CAM.normalVfov);
   } else {
-    if (S.mode !== "sensor") { showHint(tl("The camera view needs the motion sensors. Reload the page and tap Start instead of drag mode.", "Die Kameraansicht braucht die Bewegungssensoren. Lade die Seite neu und tippe auf Start statt auf „Ohne Sensoren“."), 6000); return; }
-    if (!(await startCamera())) { showHint(tl("The camera isn't available. Allow camera access for this site in your browser settings.", "Die Kamera ist nicht verfügbar. Erlaube den Kamerazugriff für diese Seite in den Browser-Einstellungen."), 6000); return; }
+    if (S.mode !== "sensor") { showHint(tl("The camera view needs the motion sensors: tap the phone button on the right first.", "Die Kameraansicht braucht die Bewegungssensoren: Tippe zuerst rechts auf die Handy-Taste.", "Камерний режим потребує датчиків руху: спершу торкнися кнопки з телефоном праворуч."), 6000); return; }
+    if (!(await startCamera())) { showHint(tl("The camera isn't available. Allow camera access for this site in your browser settings.", "Die Kamera ist nicht verfügbar. Erlaube den Kamerazugriff für diese Seite in den Browser-Einstellungen.", "Камера недоступна. Дозволь доступ до камери для цього сайту в налаштуваннях браузера."), 6000); return; }
     CAM.on = true; CAM.normalVfov = S.vfov;
     setZoom(CAM.vfov);
     if (!store.get("camTipSeen", false)) {
       store.set("camTipSeen", true);
-      showHint(tl("Pinch until the drawn stars sit on the real ones in the picture. The app remembers it for next time.", "Zoome mit zwei Fingern, bis die gezeichneten Sterne auf den echten im Bild sitzen. Die App merkt sich das für das nächste Mal."), 9000);
+      showHint(tl("Pinch until the drawn stars sit on the real ones in the picture. The app remembers it for next time.", "Zoome mit zwei Fingern, bis die gezeichneten Sterne auf den echten im Bild sitzen. Die App merkt sich das für das nächste Mal.", "Зведи або розведи пальці, доки намальовані зорі не збігатимуться зі справжніми на зображенні. Застосунок запам’ятає це на наступний раз."), 9000);
     }
   }
   $("camBtn").setAttribute("aria-pressed", CAM.on);

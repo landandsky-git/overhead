@@ -22,18 +22,18 @@ async function openGlobe() {
   $("globe").hidden = false;
   openLayer($("globe"), closeGlobe, $("globeBack"));
   renderGlobeInfo(); renderGlobeSpeed();
-  $("globeNote").textContent = tl("Loading the globe…", "Globus wird geladen…");
+  $("globeNote").textContent = tl("Loading the globe…", "Globus wird geladen…", "Завантаження глобуса…");
   try {
     const THREE = GLOBE.three = await import("three");
     const { OrbitControls } = await import(libUrl("lib/three/controls/OrbitControls.js"));
     if (!GLOBE.coast) GLOBE.coast = await (await fetch("models/coastline.json")).json();
     if (!GLOBE.on) return;   // closed while loading
     buildGlobe(THREE, OrbitControls);
-    $("globeNote").textContent = tl("Drag to turn it, pinch to zoom, tap a dot to see which satellite it is.", "Zum Drehen ziehen, mit zwei Fingern zoomen, auf einen Punkt tippen, um den Satelliten zu sehen.");
+    $("globeNote").textContent = tl("Drag to turn it, pinch to zoom, tap a dot to see which satellite it is.", "Zum Drehen ziehen, mit zwei Fingern zoomen, auf einen Punkt tippen, um den Satelliten zu sehen.", "Тягни, щоб обертати, зводь або розводь пальці, щоб масштабувати, і торкнися точки, щоб побачити, що це за супутник.");
     requestGlobePositions();
     GLOBE.timer = setInterval(requestGlobePositions, 200);
   } catch {
-    $("globeNote").textContent = tl("Couldn't load the globe. Check your connection and try again.", "Der Globus ließ sich nicht laden. Prüfe deine Verbindung und versuche es noch einmal.");
+    $("globeNote").textContent = tl("Couldn't load the globe. Check your connection and try again.", "Der Globus ließ sich nicht laden. Prüfe deine Verbindung und versuche es noch einmal.", "Не вдалося завантажити глобус. Перевір з’єднання й спробуй ще раз.");
   }
 }
 
@@ -167,11 +167,11 @@ function pickOnGlobe(sat) {
 }
 function renderGlobeInfo() {
   const sat = GLOBE.picked, box = $("globeInfo");
-  if (!sat) { box.innerHTML = `<span class="small">${tl(`${fmtN(S.sats.length)} satellites. Gold: sunlit · blue: in Earth's shadow · green: you`, `${fmtN(S.sats.length)} Satelliten. Gold: angestrahlt · Blau: im Erdschatten · Grün: du`)}</span>`; return; }
+  if (!sat) { box.innerHTML = `<span class="small">${tl(`${fmtN(S.sats.length)} satellites. Gold: sunlit · blue: in Earth's shadow · green: you`, `${fmtN(S.sats.length)} Satelliten. Gold: angestrahlt · Blau: im Erdschatten · Grün: du`, `${fmtN(S.sats.length)} ${ukPlural(S.sats.length, "супутник", "супутники", "супутників")}. Золоті: освітлені Сонцем · сині: у тіні Землі · зелена: ти`)}</span>`; return; }
   const m = GLOBE.marker.position, km = (Math.hypot(m.x, m.y, m.z) - 1) * 6371;
   box.innerHTML = `<div class="gi-name">${esc(sat.name)}</div>
-    <div class="small">${fmtN(Math.max(0, km))} ${tl("km up", "km hoch")} · ${GLOBE.pickedLit ? tl("sunlit", "angestrahlt") : tl("in Earth's shadow", "im Erdschatten")} · ${esc(CAT_LABEL[sat.cat])}</div>
-    <div class="gi-acts"><button class="linkbtn" id="globeSky">${tl("Show on the sky ›", "Am Himmel zeigen ›")}</button><button class="linkbtn" id="globeDet">${tl("Details ›", "Details ›")}</button></div>`;
+    <div class="small">${fmtN(Math.max(0, km))} ${tl("km up", "km hoch", "км над Землею")} · ${GLOBE.pickedLit ? tl("sunlit", "angestrahlt", "освітлений Сонцем") : tl("in Earth's shadow", "im Erdschatten", "у тіні Землі")} · ${esc(CAT_LABEL[sat.cat])}</div>
+    <div class="gi-acts"><button class="linkbtn" id="globeSky">${tl("Show on the sky ›", "Am Himmel zeigen ›", "Показати на небі ›")}</button><button class="linkbtn" id="globeDet">${tl("Details ›", "Details ›", "Докладніше ›")}</button></div>`;
 }
 function renderGlobeSpeed() {
   for (const b of document.querySelectorAll("#globeSpeed button")) b.setAttribute("aria-pressed", +b.dataset.s === GLOBE.speed);

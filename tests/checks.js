@@ -62,6 +62,10 @@
     check("Letters I and O are skipped", toAlpha5(180000) === "J0000" && fromAlpha5("J8000") === 188000 && toAlpha5(339999) === "Z9999");
     check("Small numbers stay as digits", toAlpha5(5) === "00005" && fromAlpha5("25544") === 25544);
 
+    // --- Ukrainian plurals: 1, 21 → one; 2–4, 22 → few; 5–20, 25, 111 → many ---
+    const pl = n => ukPlural(n, "one", "few", "many");
+    check("Ukrainian plurals", [1, 21, 101].every(n => pl(n) === "one") && [2, 4, 22, 34].every(n => pl(n) === "few") && [0, 5, 11, 12, 14, 19, 25, 111, 1000].every(n => pl(n) === "many"));
+
     // --- brightness ---
     // ISS (standard magnitude -1.3) 420 km straight up, half lit: -1.3 + 5*log10(0.42) = -3.18
     const m = magnitude(-1.3, { x: 6791, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, { x: 6371, y: 0, z: 0 }, 420, 90);
