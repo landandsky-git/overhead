@@ -8,6 +8,7 @@ function openDetails(id) {
   if (S.targetId !== id) setTarget(id);
   S.detailsId = id;
   $("details").hidden = false; $("details").scrollTop = 0;
+  openLayer($("details"), closeDetails, $("detBack"));
   $("detName").textContent = sat.name;
   updateFavButtons();
   const d = intlDesig(sat.l1);
@@ -22,7 +23,7 @@ function openDetails(id) {
   $("detPasses").innerHTML = `<p class="small">Working out passes…</p>`;
   setTimeout(() => { if (S.detailsId === id) renderDetailPasses(sat); }, 30);
 }
-function closeDetails() { S.detailsId = null; $("details").hidden = true; window.Model3D?.stop(); closeDetailedModel(); }
+function closeDetails() { S.detailsId = null; $("details").hidden = true; window.Model3D?.stop(); closeDetailedModel(); closeLayer($("details")); }
 $("detBack").addEventListener("click", closeDetails);
 const simpleModelNote = m => tl(`Simplified model: ${m.title}. ${m.size}. Drag to turn it.`, `Vereinfachtes Modell: ${m.title}. ${m.size}. Zum Drehen ziehen.`);
 

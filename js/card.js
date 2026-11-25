@@ -3,7 +3,10 @@
 "use strict";
 
 // ---------- UI ----------
-function showHint(msg, ms) { const h = $("hint"); h.textContent = msg; h.hidden = false; clearTimeout(showHint.t); showHint.t = ms ? setTimeout(() => h.hidden = true, ms) : 0; }
+// The hint line is a live region: it stays in the page and is emptied rather than hidden, so screen
+// readers announce each new message.
+function showHint(msg, ms) { const h = $("hint"); h.textContent = msg; clearTimeout(showHint.t); showHint.t = ms ? setTimeout(hideHint, ms) : 0; }
+function hideHint() { clearTimeout(showHint.t); $("hint").textContent = ""; }
 
 const upTitle = () => S.timeOffset ? tl(`Up at ${fmtTime(simNow())}`, `Am Himmel um ${fmtTime(simNow())}`) : tl("Up now", "Jetzt am Himmel");
 const visibleNow = () => { const L = limitNow(); return S.now.filter(e => e.el > 0 && S.show[e.sat.cat] && (!S.eyeOnly || (e.lit && e.mag <= L))); };
@@ -24,7 +27,7 @@ function updateStatus() {
   $("status").textContent = bits.join(" · ");
   const needFlat = S.mode === "sensor" && S.anyEvent && !S.lastSensor;
   if (needFlat && !S.flatHint) { S.flatHint = true; showHint(tl("Hold the phone flat for a moment to lock the compass.", "Halte das Handy kurz flach, damit sich der Kompass einstellt.")); }
-  else if (!needFlat && S.flatHint) { S.flatHint = false; $("hint").hidden = true; }
+  else if (!needFlat && S.flatHint) { S.flatHint = false; hideHint(); }
 }
 
 function aboutLine(sat) {
@@ -68,7 +71,7 @@ function watchPass(sat, pass) {
   if (S.targetId !== sat.id) setTarget(sat.id, true);
   startWatch(sat, pass);
   closeDetails();
-  $("sheet").classList.remove("open"); sheetH(); updateCard();
+  setSheetOpen(false); updateCard();
 }
 const fmtCountdown = ms => {
   const s = Math.max(0, Math.round(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);

@@ -5,9 +5,9 @@
 //    model): the saved copy first. The 3D files have their own cache that survives app updates.
 //  - Satellite data (data/*), CelesTrak and lookups: left to the page, which keeps its own copies.
 // Bump VERSION when the list of app files changes, and MODELS when the 3D files change.
-const VERSION = "overhead-v5";
+const VERSION = "overhead-v6";
 const MODELS = "overhead-3d-r170";
-const APP = ["./", "index.html", "css/app.css", "js/i18n.js", "js/state.js", "js/data.js", "js/positions.js", "js/astro.js", "js/sensors.js", "js/sky.js", "js/format.js", "js/card.js", "js/lists.js", "js/details.js", "js/tools.js", "js/settings.js",
+const APP = ["./", "index.html", "css/app.css", "js/i18n.js", "js/state.js", "js/data.js", "js/positions.js", "js/astro.js", "js/sensors.js", "js/sky.js", "js/format.js", "js/dialogs.js", "js/card.js", "js/lists.js", "js/details.js", "js/tools.js", "js/settings.js",
   "js/sightings.js", "js/share.js", "js/power.js", "js/camera.js", "js/space.js", "js/model-detail.js", "js/main.js",
   "worker.js", "codes.js", "sky-data.js", "model3d.js", "lib/satellite.min.js", "manifest.webmanifest",
   "icon.svg", "icon-180.png", "icon-512.png", "tle-fallback.txt"];

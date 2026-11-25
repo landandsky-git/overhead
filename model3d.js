@@ -166,6 +166,7 @@
     norm: a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
   };
   const LIGHT = V.norm([-0.5, 0.75, 0.6]);
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");   // no spinning on its own then
   const view = { canvas: null, faces: [], radius: 1, yaw: 0.7, pitch: -0.6, raf: 0, drag: null, idle: 0 };
 
   function frame() {
@@ -176,7 +177,7 @@
     const ctx = cv.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    if (!view.drag && performance.now() - view.idle > 2500) view.yaw += 0.006;   // slow spin when left alone
+    if (!view.drag && !reducedMotion.matches && performance.now() - view.idle > 2500) view.yaw += 0.006;   // slow spin when left alone
 
     const cy = Math.cos(view.yaw), sy = Math.sin(view.yaw), cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
     const rot = ([x, y, z]) => { const x1 = cy * x + sy * z, z1 = -sy * x + cy * z; return [x1, cp * y - sp * z1, sp * y + cp * z1]; };

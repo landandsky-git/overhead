@@ -10,8 +10,9 @@ function passShareText(p) {
   return tl(`${name}${where} ${dayWord(p.start)} at ${fmtTime(p.start)}: rises in the ${rise}, highest ${el}° in the ${top} at ${fmtTime(p.maxTime)}, gone in the ${set} by ${fmtTime(p.end)}${bright}`,
             `${name}${where} ${dayWord(p.start)} um ${fmtTime(p.start)}: geht im ${rise} auf, am höchsten ${el}° im ${top} um ${fmtTime(p.maxTime)}, verschwindet bis ${fmtTime(p.end)} im ${set}${bright}`);
 }
+// The link opens the app with this satellite selected (main.js reads #sat=).
 async function sharePass(p) {
-  const text = passShareText(p), url = location.origin + location.pathname;
+  const text = passShareText(p), url = `${location.origin}${location.pathname}#sat=${p.sat.id}`;
   if (navigator.share) {
     try { await navigator.share({ title: tl("Satellite pass", "Satellitenüberflug"), text, url }); return; }
     catch (e) { if (e.name === "AbortError") return; }

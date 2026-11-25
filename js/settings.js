@@ -23,8 +23,8 @@ function setTimeOffset(minutes) {
   if (S.detailsId) renderNow(S.byId.get(S.detailsId));
 }
 function timeBarH() { document.documentElement.style.setProperty("--tb-h", $("timeBar").hidden ? "0px" : $("timeBar").offsetHeight + "px"); }
-function openTimeBar() { $("timeBar").hidden = false; timeBarH(); refreshTimeLabels(); }
-function closeTimeBar() { $("timeBar").hidden = true; timeBarH(); refreshTimeLabels(); }
+function openTimeBar() { $("timeBar").hidden = false; $("timeBtn").setAttribute("aria-expanded", true); timeBarH(); refreshTimeLabels(); }
+function closeTimeBar() { $("timeBar").hidden = true; $("timeBtn").setAttribute("aria-expanded", false); timeBarH(); refreshTimeLabels(); }
 $("timeBtn").addEventListener("click", () => $("timeBar").hidden ? openTimeBar() : closeTimeBar());
 $("timePill").addEventListener("click", openTimeBar);
 $("timeIn").addEventListener("input", e => setTimeOffset(+e.target.value));
@@ -39,6 +39,20 @@ function renderSkySetting() {
                                 `In einer dunklen, mondlosen Nacht siehst du bis Magnitude ${fmtN(S.limit, 1)}. Dämmerung und Mondlicht verringern das, und die App berücksichtigt beides`) +
     (now && now.sunEl < -6 ? `: ${tl("right now", "gerade")} ${seeingText(now)}.` : ".");
 }
+
+// --- text size: page zoom is off (pinching zooms the sky), so the app scales its own text ---
+const TEXT_SIZES = [[1, tl("Normal", "Normal")], [1.15, tl("Large", "Groß")], [1.3, tl("Largest", "Sehr groß")]];
+function renderTextSetting() {
+  const now = store.get("textSize", 1);
+  $("textIn").innerHTML = TEXT_SIZES.map(([v, name]) => `<button role="radio" aria-checked="${v === now}" data-v="${v}">${name}</button>`).join("");
+}
+$("textIn").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  store.set("textSize", +b.dataset.v);
+  document.documentElement.style.setProperty("--text", b.dataset.v);
+  renderTextSetting(); sheetH(); timeBarH();
+  $("textIn").querySelector(`[data-v="${b.dataset.v}"]`).focus();
+});
 
 // --- language: automatic (the phone's), English or German; changing it reloads the app ---
 function renderLangSetting() {
@@ -89,14 +103,14 @@ function showGuideStep() {
   $("guideNext").textContent = guideAt === GUIDE.length - 1 ? tl("Done", "Fertig") : tl("Next", "Weiter");
   g.spot.forEach(id => $(id).classList.add("spot"));
 }
-function openGuide() { guideAt = 0; $("guide").hidden = false; showGuideStep(); $("guideNext").focus(); }
+function openGuide() { guideAt = 0; $("guide").hidden = false; showGuideStep(); openLayer($("guide"), closeGuide, $("guideNext")); }
 function closeGuide() {
   document.querySelectorAll(".spot").forEach(el => el.classList.remove("spot"));
-  $("guide").hidden = true; store.set("guideSeen", true);
+  $("guide").hidden = true; closeLayer($("guide")); store.set("guideSeen", true);
 }
 $("guideNext").addEventListener("click", () => { if (++guideAt >= GUIDE.length) closeGuide(); else showGuideStep(); });
 $("guideSkip").addEventListener("click", closeGuide);
-$("guideBtn").addEventListener("click", () => { $("settings").hidden = true; openGuide(); });
+$("guideBtn").addEventListener("click", () => { $("settings").hidden = true; closeLayer($("settings")); openGuide(); });
 
 // --- settings ---
 function updateLocNow() {
@@ -119,23 +133,42 @@ function openSettings() {
   $("showBright").checked = S.show.bright; $("showStarlink").checked = S.show.starlink; $("showOther").checked = S.show.other;
   $("eyeOnly").checked = S.eyeOnly;
   $("batteryIn").checked = S.battery;
-  $("locErr").hidden = true;
-  updateLocNow(); updateTleInfo(); renderSkySetting(); renderSightNote(); renderLangSetting(); $("settings").hidden = false;
+  $("locErr").hidden = true; markCoords(false);
+  updateLocNow(); updateTleInfo(); renderSkySetting(); renderSightNote(); renderTextSetting(); renderLangSetting();
+  $("settings").hidden = false;
+  openLayer($("settings"), closeSettings, $("setDone"));
 }
+function closeSettings() {
+  if (!S.loc) { $("locErr").textContent = tl("Choose a location first, so the app knows which part of the sky you see.", "Wähle zuerst einen Standort, damit die App weiß, welchen Teil des Himmels du siehst."); $("locErr").hidden = false; return; }
+  disarmSightReset();
+  $("settings").hidden = true; closeLayer($("settings"));
+}
+// Invalid coordinates are marked on both fields, which point to the error message below them.
+const markCoords = bad => { for (const id of ["latIn", "lonIn"]) $(id).setAttribute("aria-invalid", bad); };
 function setLocation(loc) {
   S.loc = loc; store.set("loc", loc);
   sendObs(); S.passes = null; S.passesAt = 0; S.passJob++;
   computeSky(); updateLocNow(); updateStatus(); renderSheet(); updateCard();
 }
 $("setBtn").addEventListener("click", openSettings);
-$("setDone").addEventListener("click", () => {
-  if (!S.loc) { $("locErr").textContent = tl("Choose a location first, so the app knows which part of the sky you see.", "Wähle zuerst einen Standort, damit die App weiß, welchen Teil des Himmels du siehst."); $("locErr").hidden = false; return; }
-  $("settings").hidden = true;
-});
+$("setDone").addEventListener("click", closeSettings);
 $("corrIn").addEventListener("input", e => { S.corr = +e.target.value; $("corrVal").textContent = (S.corr > 0 ? "+" : "") + S.corr + "°"; store.set("corr", S.corr); });
 $("eyeOnly").addEventListener("change", e => { S.eyeOnly = e.target.checked; store.set("eyeOnly", S.eyeOnly); renderSheet(); updateStatus(); });
 $("batteryIn").addEventListener("change", e => { S.battery = e.target.checked; store.set("battery", S.battery); });
-$("sightReset").addEventListener("click", () => { forgetSightings(); renderSightNote(); });
+// Forgetting sightings can't be undone, so the button asks for a second tap within 5 seconds.
+const sightResetLabel = $("sightReset").textContent;
+function disarmSightReset() { const b = $("sightReset"); clearTimeout(b._timer); delete b.dataset.armed; b.textContent = sightResetLabel; }
+$("sightReset").addEventListener("click", () => {
+  const b = $("sightReset");
+  if (!b.dataset.armed) {
+    const n = sightingCount();
+    b.dataset.armed = "1";
+    b.textContent = tl(`Tap again to forget ${n} sighting${n === 1 ? "" : "s"}`, `Noch einmal tippen, um ${n} Sichtung${n === 1 ? "" : "en"} zu vergessen`);
+    clearTimeout(b._timer); b._timer = setTimeout(disarmSightReset, 5000);
+    return;
+  }
+  disarmSightReset(); forgetSightings(); renderSightNote();
+});
 for (const [id, cat] of [["showBright", "bright"], ["showStarlink", "starlink"], ["showOther", "other"]]) {
   $(id).addEventListener("change", e => { S.show[cat] = e.target.checked; store.set("show", S.show); computePaths(); renderSheet(); updateStatus(); });
 }
@@ -155,7 +188,7 @@ async function searchPlaces() {
     box.innerHTML = placeList.length ? placeList.map((p, i) => `
       <button class="place" data-i="${i}"><span>${esc(p.name)}</span>
       <span class="sub">${esc([p.admin1, p.country].filter(Boolean).join(", "))} · ${fmtLatLon(p.latitude, p.longitude)}</span></button>`).join("")
-      : `<p class="small">${tl(`No places found for "${esc(q)}". Try another spelling or a larger town nearby.`, `Keine Orte für „${esc(q)}“ gefunden. Versuche eine andere Schreibweise oder einen größeren Ort in der Nähe.`)}</p>`;
+      : `<p class="small">${tl(`No places found for “${esc(q)}”. Try another spelling or a larger town nearby.`, `Keine Orte für „${esc(q)}“ gefunden. Versuche eine andere Schreibweise oder einen größeren Ort in der Nähe.`)}</p>`;
   } catch (e) {
     if (e.name !== "AbortError") box.innerHTML = `<p class="err">${tl("Couldn't search right now. Check your connection, or use GPS or coordinates instead.", "Die Suche klappt gerade nicht. Prüfe deine Verbindung oder nutze GPS oder Koordinaten.")}</p>`;
   }
@@ -175,9 +208,10 @@ $("gpsBtn").addEventListener("click", async () => {
 $("coordBtn").addEventListener("click", () => {
   const lat = parseFloat($("latIn").value), lon = parseFloat($("lonIn").value);
   if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
-    $("locErr").textContent = tl("Latitude must be between -90 and 90, and longitude between -180 and 180.", "Der Breitengrad muss zwischen -90 und 90 liegen, der Längengrad zwischen -180 und 180."); $("locErr").hidden = false; return;
+    $("locErr").textContent = tl("Latitude must be between -90 and 90, and longitude between -180 and 180.", "Der Breitengrad muss zwischen -90 und 90 liegen, der Längengrad zwischen -180 und 180."); $("locErr").hidden = false;
+    markCoords(true); return;
   }
-  setLocation({ lat, lon, h: 0, name: null, src: "manual" }); $("locErr").hidden = true;
+  setLocation({ lat, lon, h: 0, name: null, src: "manual" }); $("locErr").hidden = true; markCoords(false);
 });
 $("refreshBtn").addEventListener("click", async () => {
   const b = $("refreshBtn"), label = b.textContent; b.textContent = tl("Downloading…", "Wird geladen…"); b.disabled = true;

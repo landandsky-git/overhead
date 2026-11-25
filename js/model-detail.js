@@ -52,7 +52,8 @@ async function openDetailedModel() {
     const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     const controls = new OrbitControls(camera, cv);
-    Object.assign(controls, { enableDamping: true, autoRotate: true, autoRotateSpeed: 1.2, enablePan: false });
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;   // then it only turns when dragged
+    Object.assign(controls, { enableDamping: true, autoRotate: !still, autoRotateSpeed: 1.2, enablePan: false });
     controls.addEventListener("start", () => { controls.autoRotate = false; });
     Object.assign(detail, { renderer, controls, scene });
 

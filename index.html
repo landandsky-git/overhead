@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- Page zoom stays off: pinching zooms the sky chart instead. Settings → Text size enlarges the text. -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Overhead</title>
 <meta name="theme-color" content="#05070d">
@@ -13,8 +14,10 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap">
 <link rel="stylesheet" href="css/app.css">
+<script>/* the text size chosen in Settings, applied before the page first draws */ try { document.documentElement.style.setProperty("--text", JSON.parse(localStorage.getItem("textSize")) || 1); } catch {}</script>
 <script type="importmap">{ "imports": { "three": "./lib/three/three.module.min.js" } }</script>
 </head>
 <body>
@@ -25,39 +28,39 @@
 <div class="top">
   <div class="brand">Overhead</div>
   <div class="status" id="status" data-de="Lädt…">Loading…</div>
-  <button class="iconbtn" id="timeBtn" title="Show the sky at another time" aria-label="Show the sky at another time" data-de-title="Den Himmel zu einer anderen Zeit zeigen" data-de-aria-label="Den Himmel zu einer anderen Zeit zeigen">◷</button>
+  <button class="iconbtn" id="timeBtn" title="Show the sky at another time" aria-label="Show the sky at another time" data-de-title="Den Himmel zu einer anderen Zeit zeigen" data-de-aria-label="Den Himmel zu einer anderen Zeit zeigen" aria-expanded="false" aria-controls="timeBar">◷</button>
   <button class="iconbtn" id="alignBtn" title="Align with a star or planet" aria-label="Align with a star or planet" data-de-title="An einem Stern oder Planeten ausrichten" data-de-aria-label="An einem Stern oder Planeten ausrichten">◎</button>
-  <button class="iconbtn" id="redBtn" aria-pressed="false" title="Red night mode">R</button>
-  <button class="iconbtn" id="setBtn" title="Settings" data-de-title="Einstellungen">⚙</button>
+  <button class="iconbtn" id="redBtn" aria-pressed="false" title="Red night mode" aria-label="Red night mode">R</button>
+  <button class="iconbtn" id="setBtn" title="Settings" aria-label="Settings" data-de-title="Einstellungen" data-de-aria-label="Einstellungen">⚙</button>
 </div>
 <button class="timepill" id="timePill" hidden></button>
-<div class="notice" id="notice" hidden></div>
-<div class="hint" id="hint" hidden></div>
+<div class="notice" id="notice" role="status" hidden></div>
+<div class="hint" id="hint" role="status"></div>
 <div class="readout" id="readout"></div>
 <button class="zoompill" id="zoomPill" hidden></button>
 <button class="iconbtn camfab" id="camBtn" aria-pressed="false" title="Show the camera picture behind the sky" aria-label="Camera view" data-de-title="Kamerabild hinter dem Himmel zeigen" data-de-aria-label="Kameraansicht" hidden>◉</button>
 
-<div class="card" id="card" role="button" tabindex="0" aria-label="Show satellite details" data-de-aria-label="Satellitendetails zeigen" hidden>
-  <div class="card-top"><h3 id="cardName"></h3><button class="favbtn" id="cardFav" aria-pressed="false" aria-label="Favorite">☆</button><button id="cardShare" data-de="Teilen" hidden>Share</button><button id="cardClose" data-de="Schließen">Clear</button></div>
+<div class="card" id="card" hidden>
+  <div class="card-top"><h3 id="cardName"></h3><button class="favbtn" id="cardFav" aria-pressed="false" aria-label="Favorite">☆</button><span class="card-acts"><button id="cardShare" data-de="Teilen" hidden>Share</button><button id="cardClose" data-de="Schließen">Clear</button></span></div>
   <div class="where" id="cardWhere"></div>
   <div class="meta" id="cardMeta"></div>
   <div class="meta" id="cardAbout"></div>
   <div class="feedback" id="cardFb" hidden><span data-de="Gesehen?">Did you see it?</span><button id="sawYes" data-de="Ja">Saw it</button><button id="sawNo" data-de="Nein">Couldn't see it</button></div>
-  <div class="more" data-de="Tippen für Bahn, Betreiber und Start ›">Tap for orbit, operator and launch details ›</div>
+  <button class="more" id="cardMore" data-de="Bahn, Betreiber und Start ansehen ›">Orbit, operator and launch details ›</button>
 </div>
 
 <section class="sheet" id="sheet">
   <div class="sheet-head">
-    <button class="grab" id="grab"><span id="sheetTitle" data-de="Jetzt am Himmel">Up now</span></button>
+    <button class="grab" id="grab" aria-expanded="false" aria-controls="sheetBody"><span id="sheetTitle" data-de="Jetzt am Himmel">Up now</span></button>
     <div class="tabs" role="tablist">
-      <button class="tab" role="tab" id="tabNow" aria-selected="true" data-de="Jetzt">Now</button>
-      <button class="tab" role="tab" id="tabTonight" aria-selected="false" data-de="Nacht">Tonight</button>
-      <button class="tab" role="tab" id="tabPasses" aria-selected="false" data-de="Überflüge">Passes</button>
-      <button class="tab" role="tab" id="tabSpace" aria-selected="false" data-de="Raumfahrt">Space</button>
+      <button class="tab" role="tab" id="tabNow" aria-selected="true" aria-controls="sheetBody" data-de="Jetzt">Now</button>
+      <button class="tab" role="tab" id="tabTonight" aria-selected="false" aria-controls="sheetBody" tabindex="-1" data-de="Nacht">Tonight</button>
+      <button class="tab" role="tab" id="tabPasses" aria-selected="false" aria-controls="sheetBody" tabindex="-1" data-de="Überflüge">Passes</button>
+      <button class="tab" role="tab" id="tabSpace" aria-selected="false" aria-controls="sheetBody" tabindex="-1" data-de="Raumfahrt">Space</button>
     </div>
   </div>
-  <div class="sheet-body" id="sheetBody">
-    <div class="tools" id="nowTools"><input type="search" id="findIn" placeholder="Find a satellite by name or number" autocomplete="off" enterkeyhint="search" aria-label="Find a satellite" data-de-placeholder="Satellit nach Name oder Nummer suchen" data-de-aria-label="Satellit suchen">
+  <div class="sheet-body" id="sheetBody" role="tabpanel" aria-labelledby="tabNow">
+    <div class="tools" id="nowTools"><input type="search" id="findIn" name="satellite" placeholder="Name or number, e.g. ISS or 25544…" autocomplete="off" spellcheck="false" enterkeyhint="search" aria-label="Find a satellite" data-de-placeholder="Name oder Nummer, z. B. ISS oder 25544…" data-de-aria-label="Satellit suchen">
       <button class="linkbtn" id="idBtn" data-de="Etwas Bewegtes gesehen? Finde heraus, was es war ›">Saw something moving? Find out what it was ›</button></div>
     <div id="listBox"></div>
   </div>
@@ -98,31 +101,31 @@
     <button class="primary" id="startBtn">Start</button>
     <button class="secondary" id="dragBtn" data-de="Ohne Sensoren nutzen (Himmel ziehen)">Use without sensors (drag to look)</button>
     <p class="small" data-de="Braucht Zugriff auf Standort und Bewegungssensoren. Funktioniert am besten draußen, fern von Metall und Magneten, nachdem du das Handy in Form einer Acht geschwenkt hast, damit sich der Kompass einpendelt.">Needs location and motion access. Works best outdoors, away from metal and magnets, after waving the phone in a figure-8 to settle the compass.</p>
-    <p class="err" id="introErr" hidden></p>
+    <p class="err" id="introErr" role="alert" hidden></p>
   </div>
 </div>
 
-<div class="overlay page" id="settings" hidden>
+<div class="overlay page" id="settings" role="dialog" aria-modal="true" aria-labelledby="setTitle" hidden>
   <div class="intro">
-    <div class="panel-head"><h2 data-de="Einstellungen">Settings</h2><button class="linkbtn" id="setDone" data-de="Fertig">Done</button></div>
+    <div class="panel-head"><h2 id="setTitle" data-de="Einstellungen">Settings</h2><button class="linkbtn" id="setDone" data-de="Fertig">Done</button></div>
 
     <section class="group">
       <h3 data-de="Dein Standort">Your location</h3>
       <div class="current" id="locNow"></div>
       <label class="field"><span data-de="Ort oder Stadt suchen">Search for a town or city</span>
-        <input type="search" id="placeIn" placeholder="Start typing a town name" autocomplete="off" enterkeyhint="search" data-de-placeholder="Ortsnamen eingeben">
+        <input type="search" id="placeIn" name="place" placeholder="e.g. Munich…" autocomplete="off" spellcheck="false" enterkeyhint="search" data-de-placeholder="z. B. München…">
       </label>
       <div class="results" id="placeResults"></div>
       <button class="secondary" id="gpsBtn" data-de="Stattdessen GPS des Handys nutzen">Use my phone's GPS instead</button>
       <details>
         <summary data-de="Stattdessen Koordinaten eingeben">Enter coordinates instead</summary>
         <div class="pair">
-          <label class="field"><span data-de="Breitengrad">Latitude</span><input type="number" id="latIn" step="0.0001" min="-90" max="90"></label>
-          <label class="field"><span data-de="Längengrad">Longitude</span><input type="number" id="lonIn" step="0.0001" min="-180" max="180"></label>
+          <label class="field"><span data-de="Breitengrad">Latitude</span><input type="number" id="latIn" name="lat" step="0.0001" min="-90" max="90" autocomplete="off" aria-describedby="locErr"></label>
+          <label class="field"><span data-de="Längengrad">Longitude</span><input type="number" id="lonIn" name="lon" step="0.0001" min="-180" max="180" autocomplete="off" aria-describedby="locErr"></label>
         </div>
         <button class="secondary" id="coordBtn" data-de="Diese Koordinaten verwenden">Use these coordinates</button>
       </details>
-      <p class="err" id="locErr" hidden></p>
+      <p class="err" id="locErr" role="alert" hidden></p>
     </section>
 
     <section class="group">
@@ -164,6 +167,11 @@
     </section>
 
     <section class="group">
+      <h3 data-de="Schriftgröße">Text size</h3>
+      <div class="seg seg3" id="textIn" role="radiogroup" aria-label="Text size" data-de-aria-label="Schriftgröße"></div>
+    </section>
+
+    <section class="group">
       <h3>Language · Sprache</h3>
       <div class="seg seg3" id="langIn" role="radiogroup" aria-label="Language" data-de-aria-label="Sprache"></div>
     </section>
@@ -176,7 +184,7 @@
       <details><summary data-de="Was bedeutet Magnitude?">What does magnitude mean?</summary>
         <p class="small" data-de="Die Helligkeitsskala der Astronomie: Kleinere Zahlen sind heller. Die Venus hat etwa −4, die hellsten Sterne etwa 0, und Magnitude 6 ist das Schwächste, was man an einem sehr dunklen Himmel sieht.">Astronomers' brightness scale, where lower numbers are brighter. Venus is about −4, the brightest stars around 0, and magnitude 6 is the faintest you can see in a very dark sky.</p></details>
       <details><summary data-de="Wie genau ist das?">How accurate is it?</summary>
-        <p class="small" data-de="Die Positionen stimmen meist auf Bruchteile eines Grads, weil die Satellitendaten alle paar Stunden aktualisiert werden. Der größte Fehler ist der Kompass des Handys, und den behebt das Ausrichten mit ◎. Die Helligkeit ist eine Schätzung, meist auf etwa eine Magnitude genau. Mit „Gesehen?“ auf der Karte kannst du sie korrigieren.">Positions are usually within a fraction of a degree, because the satellite data updates every few hours. The phone's compass is the biggest error, which aligning with ◎ fixes. Brightness is an estimate, usually within about one magnitude. The "Did you see it?" buttons on the card let you correct it.</p></details>
+        <p class="small" data-de="Die Positionen stimmen meist auf Bruchteile eines Grads, weil die Satellitendaten alle paar Stunden aktualisiert werden. Der größte Fehler ist der Kompass des Handys, und den behebt das Ausrichten mit ◎. Die Helligkeit ist eine Schätzung, meist auf etwa eine Magnitude genau. Mit „Gesehen?“ auf der Karte kannst du sie korrigieren.">Positions are usually within a fraction of a degree, because the satellite data updates every few hours. The phone's compass is the biggest error, which aligning with ◎ fixes. Brightness is an estimate, usually within about one magnitude. The “Did you see it?” buttons on the card let you correct it.</p></details>
       <details><summary data-de="Funktioniert es ohne Empfang?">Does it work without signal?</summary>
         <p class="small" data-de="Ja. Sobald du die App einmal mit Empfang geöffnet hast, sind sie und ihre Satellitendaten auf deinem Handy gespeichert. Daten, die älter als eine Woche sind, werden ungenauer.">Yes. Once you've opened it with signal, the app and its satellite data are saved on your phone. Data older than a week gets less accurate.</p></details>
       <details><summary data-de="Warum springt die Ansicht, wenn ich senkrecht nach oben zeige?">Why does the view jump when I point straight up?</summary>
@@ -194,7 +202,7 @@
   </div>
 </div>
 
-<div class="overlay page" id="details" hidden>
+<div class="overlay page" id="details" role="dialog" aria-modal="true" aria-labelledby="detName" hidden>
   <div class="intro det">
     <div class="panel-head"><button class="linkbtn" id="detBack" data-de="‹ Zurück zum Himmel">‹ Back to sky</button><button class="linkbtn" id="detFav" aria-pressed="false">☆ Add to favorites</button></div>
     <h2 id="detName"></h2>
@@ -224,6 +232,7 @@
 <script src="js/sensors.js"></script>
 <script src="js/sky.js"></script>
 <script src="js/format.js"></script>
+<script src="js/dialogs.js"></script>
 <script src="js/card.js"></script>
 <script src="js/lists.js"></script>
 <script src="js/details.js"></script>

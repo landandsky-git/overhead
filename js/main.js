@@ -7,7 +7,7 @@ async function begin(mode) {
   $("introErr").hidden = true;
   try { if (mode === "sensor") await startSensors(); else S.mode = "drag"; }
   catch (e) { $("introErr").textContent = e.message; $("introErr").hidden = false; return; }
-  $("intro").hidden = true;
+  $("intro").hidden = true; closeLayer($("intro"));
   $("camBtn").hidden = S.mode !== "sensor";   // the camera view follows the phone, so it needs the sensors
   try { await navigator.wakeLock?.request("screen"); } catch {}
   // A town picked by hand is kept; otherwise refresh from GPS.
@@ -24,7 +24,15 @@ document.addEventListener("visibilitychange", async () => {
   if (!document.hidden && S.mode) { try { await navigator.wakeLock?.request("screen"); } catch {} }
 });
 
+// A shared pass links here with the satellite in the address (…#sat=25544): it gets selected once
+// the satellite data has loaded, and its next pass is followed.
+const linkedSat = (/[#&]sat=([0-9A-Z]{5})\b/.exec(location.hash) || [])[1] || null;
+// The Now list refreshes every 2 seconds, except while someone is typing a search or moving
+// through it with the keyboard (rebuilding it would throw them out).
+const listInUse = () => { const a = document.activeElement; return a === $("findIn") || ($("sheetBody").contains(a) && a.matches(":focus-visible")); };
+
 async function init() {
+  openLayer($("intro"), null);   // the start screen covers everything until Start is tapped
   loadColors(); resize(); sheetH();
   requestAnimationFrame(draw);
   if (typeof satellite === "undefined") { $("status").textContent = tl("Couldn't load the orbit library. Check your connection and reload.", "Die Bahnberechnung ließ sich nicht laden. Prüfe deine Verbindung und lade neu."); return; }
@@ -32,7 +40,7 @@ async function init() {
   setInterval(requestTick, 250);
   setInterval(() => { computeSky(); updateStatus(); updateCard(); refreshTimeLabels(); if (S.detailsId) renderNow(S.byId.get(S.detailsId)); }, 1000);
   setInterval(computePaths, 4000);
-  setInterval(() => { if (S.tab === "now" && $("sheet").classList.contains("open") && document.activeElement !== $("findIn")) renderSheet(); }, 2000);
+  setInterval(() => { if (S.tab === "now" && $("sheet").classList.contains("open") && !listInUse()) renderSheet(); }, 2000);
   setInterval(() => { if (S.tab === "tonight" && $("sheet").classList.contains("open")) renderSheet(); }, 30000);
   setInterval(() => { if (S.loc && S.counts.bright && Date.now() - S.passesAt > 30 * 60e3) requestPasses(); }, 2000);
   // If the big list was refused, try again once CelesTrak's 2-hour wait is over.
@@ -43,6 +51,10 @@ async function init() {
   // Offline support: keeps the app's files on the phone (see sw.js).
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   await loadSats(false);
+  if (linkedSat) {
+    if (S.byId.has(linkedSat)) setTarget(linkedSat);
+    history.replaceState(null, "", location.pathname + location.search);   // a reload shouldn't select it again
+  }
   loadSpace();   // launches and crew for the Space tab, kept for offline use
 }
 init();

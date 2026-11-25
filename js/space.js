@@ -88,4 +88,3 @@ function renderSpace(box) {
     <h4 class="tn-h">${tl("Next launches", "Nächste Starts")}</h4>${rows || `<div class="empty">${tl("No launches listed.", "Keine Starts angekündigt.")}</div>`}
     <div class="note">${tl(`From The Space Devs' Launch Library 2, ${updated}. Times are planned and often slip.`, `Aus der Launch Library 2 von The Space Devs, ${updated}. Die Zeiten sind geplant und verschieben sich oft.`)}</div>`;
 }
-$("tabSpace").addEventListener("click", () => { S.tab = "space"; $("sheet").classList.add("open"); renderSheet(); sheetH(); });

@@ -16,10 +16,8 @@ function satRow(sat, extraClass) {
 
 function renderSheet() {
   const box = $("listBox");
-  $("tabNow").setAttribute("aria-selected", S.tab === "now");
-  $("tabTonight").setAttribute("aria-selected", S.tab === "tonight");
-  $("tabPasses").setAttribute("aria-selected", S.tab === "passes");
-  $("tabSpace").setAttribute("aria-selected", S.tab === "space");
+  // the selected tab is the one Tab lands on (arrow keys move between them) and labels the list
+  for (const [id, tab] of TABS) { const on = S.tab === tab; $(id).setAttribute("aria-selected", on); $(id).tabIndex = on ? 0 : -1; if (on) $("sheetBody").setAttribute("aria-labelledby", id); }
   $("nowTools").hidden = S.tab !== "now";
   const body = $("sheetBody"), top = body.scrollTop;
   if (S.tab === "tonight") {
@@ -35,7 +33,7 @@ function renderSheet() {
       for (const s of S.sats) { if (s.nameU.includes(Q) || s.id === q || String(fromAlpha5(s.id)) === q) { hits.push(s); if (hits.length >= 60) break; } }
       hits.sort((a, b) => ((S.nowMap.get(b.idx)?.el ?? -99) > 0) - ((S.nowMap.get(a.idx)?.el ?? -99) > 0));
       box.innerHTML = hits.length ? hits.map(s => satRow(s)).join("") + (hits.length >= 60 ? `<div class="note">${tl("Showing the first 60 matches. Type more of the name to narrow it down.", "Die ersten 60 Treffer. Gib mehr vom Namen ein, um die Suche einzugrenzen.")}</div>` : "")
-        : `<div class="empty">${tl(`No satellite matches "${esc(q)}".`, `Kein Satellit passt zu „${esc(q)}“.`)}</div>`;
+        : `<div class="empty">${tl(`No satellite matches “${esc(q)}”.`, `Kein Satellit passt zu „${esc(q)}“.`)}</div>`;
     } else if (!up.length) {
       box.innerHTML = `<div class="empty">${S.sats.length ? (S.loc ? tl("Nothing is above the horizon right now. Check which satellite types are switched on in Settings.", "Gerade ist nichts über dem Horizont. Prüfe in den Einstellungen, welche Satellitenarten eingeschaltet sind.")
         : tl("Set your location in Settings to see what's overhead.", "Lege in den Einstellungen deinen Standort fest, um zu sehen, was über dir ist.")) : tl("Loading satellite data…", "Satellitendaten werden geladen…")}</div>`;
@@ -62,7 +60,7 @@ function renderSheet() {
           <span class="dot"></span>
           <span class="nm">${esc(favName(p.sat))}<span class="sub">${compassName(p.startAz)} → ${compassName(p.endAz)} · ${tl("peak", "max.")} ${p.maxEl.toFixed(0)}°${p.visible ? ` · ${magText(p.mag)}` : ""}</span></span>
           <span class="num">${fmtTime(p.start)}<span class="sub">${dayWord(p.start)} · ${Math.max(1, Math.round((p.end - p.start) / 60000))} min</span></span>
-        </button>`).join("") : `<div class="empty">${tl("No passes above 15° in the next 12 hours.", "Keine Überflüge über 15° in den nächsten 12 Stunden.")}</div>`);
+        </button>`).join("") : `<div class="empty">${tl("No passes above 15° in the next 14 hours.", "Keine Überflüge über 15° in den nächsten 14 Stunden.")}</div>`);
     }
   }
   body.scrollTop = top;
@@ -79,13 +77,19 @@ $("listBox").addEventListener("click", e => {
   const [list, i] = (b.dataset.pass || "").split(":"), p = list && (list === "tonight" ? S.tonightList : S.passRows)?.[+i];
   if (p) watchPass(p.sat, p); else openDetails(b.dataset.id);
 });
-$("tabTonight").addEventListener("click", () => { S.tab = "tonight"; $("sheet").classList.add("open"); renderSheet(); sheetH(); });
+// The four tabs above the list. Arrow keys (and Home/End) move between them, as in any tab bar.
+const TABS = [["tabNow", "now"], ["tabTonight", "tonight"], ["tabPasses", "passes"], ["tabSpace", "space"]];
+for (const [id, tab] of TABS) $(id).addEventListener("click", () => { S.tab = tab; renderSheet(); setSheetOpen(true); });
+document.querySelector(".tabs").addEventListener("keydown", e => {
+  const ids = TABS.map(t => t[0]), i = ids.indexOf(document.activeElement.id), n = ids.length;
+  const j = { ArrowRight: (i + 1) % n, ArrowLeft: (i - 1 + n) % n, Home: 0, End: n - 1 }[e.key];
+  if (i < 0 || j == null) return;
+  e.preventDefault(); $(ids[j]).focus(); $(ids[j]).click();
+});
 $("findIn").addEventListener("input", () => { clearTimeout(renderSheet.t); renderSheet.t = setTimeout(renderSheet, 150); });
-$("grab").addEventListener("click", () => { $("sheet").classList.toggle("open"); sheetH(); });
-$("tabNow").addEventListener("click", () => { S.tab = "now"; $("sheet").classList.add("open"); renderSheet(); sheetH(); });
-$("tabPasses").addEventListener("click", () => { S.tab = "passes"; $("sheet").classList.add("open"); renderSheet(); sheetH(); });
+$("grab").addEventListener("click", () => setSheetOpen(!$("sheet").classList.contains("open")));
+// Tapping anywhere on the card opens the details; keyboard users have the button at its foot.
 $("card").addEventListener("click", () => { if (S.targetId) openDetails(S.targetId); });
-$("card").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && S.targetId) { e.preventDefault(); openDetails(S.targetId); } });
 $("cardClose").addEventListener("click", e => { e.stopPropagation(); setTarget(null); });
 $("cardFav").addEventListener("click", e => { e.stopPropagation(); if (S.targetId) toggleFav(S.targetId); });
 $("detFav").addEventListener("click", () => { if (S.detailsId) toggleFav(S.detailsId); });
@@ -105,6 +109,11 @@ function updateFavButtons() {
   if (S.detailsId) { $("detFav").textContent = on(S.detailsId) ? tl("★ Favorite", "★ Favorit") : tl("☆ Add to favorites", "☆ Zu Favoriten"); $("detFav").setAttribute("aria-pressed", on(S.detailsId)); }
 }
 function sheetH() { document.documentElement.style.setProperty("--sheet-h", $("sheet").offsetHeight + "px"); }
+function setSheetOpen(open) {
+  $("sheet").classList.toggle("open", open);
+  $("grab").setAttribute("aria-expanded", open);
+  sheetH();
+}
 
 // --- tonight: when it's dark, the clouds, the Moon and the best passes ---
 // Dark enough for satellites = the Sun at least 6 degrees below the horizon. Scanned in 5-minute steps.
