@@ -9,7 +9,7 @@ const PACE = { last: 0, sig: [], stillSince: 0 };
 function skipFrame() {
   const now = performance.now();
   if (!S.battery) return false;
-  const covered = !$("details").hidden || !$("settings").hidden || !$("intro").hidden;
+  const covered = !$("details").hidden || !$("settings").hidden || !$("intro").hidden || !$("globe").hidden;
   const sig = [...(S.mode === "sensor" && S.R ? S.R : [S.view.az, S.view.el]), S.vfov, S.timeOffset];
   let change = sig.length !== PACE.sig.length ? 1 : 0;
   for (let i = 0; !change && i < sig.length; i++) if (Math.abs(sig[i] - PACE.sig[i]) > 0.0006) change = 1;

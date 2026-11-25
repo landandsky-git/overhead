@@ -58,7 +58,7 @@ function renderSheet() {
         (list.length ? list.map((p, i) => `
         <button class="row ${p.visible ? "lit" : ""} ${p.sat.id === S.targetId ? "sel" : ""}" data-id="${p.sat.id}" data-pass="passes:${i}">
           <span class="dot"></span>
-          <span class="nm">${esc(favName(p.sat))}<span class="sub">${compassName(p.startAz)} → ${compassName(p.endAz)} · ${tl("peak", "max.")} ${p.maxEl.toFixed(0)}°${p.visible ? ` · ${magText(p.mag)}` : ""}</span></span>
+          <span class="nm">${esc(favName(p.sat))}<span class="sub">${compassName(p.startAz)} → ${compassName(p.endAz)} · ${tl("peak", "max.")} ${p.maxEl.toFixed(0)}°${p.blocked ? ` · ${tl("behind obstacles", "hinter Hindernissen")}` : p.visible ? ` · ${magText(p.mag)}` : ""}</span></span>
           <span class="num">${fmtTime(p.start)}<span class="sub">${dayWord(p.start)} · ${Math.max(1, Math.round((p.end - p.start) / 60000))} min</span></span>
         </button>`).join("") : `<div class="empty">${tl("No passes above 15° in the next 14 hours.", "Keine Überflüge über 15° in den nächsten 14 Stunden.")}</div>`);
     }
@@ -246,8 +246,10 @@ function renderTonight(box) {
       ${cloudHtml}
       <div class="tn-line"><span class="tn-k">${tl("Seeing", "Sicht")}</span><span>${win.darkNow ? now : `${tl("From", "Ab")} ${fmtTime(seeAt)}`} ${seeingText(conditionsAt(seeAt))}</span></div>
       <div class="tn-line"><span class="tn-k">${tl("Moon", "Mond")}</span><span>${lit != null ? tl(`${lit}% lit, `, `${lit} % beleuchtet, `) : ""}${moonWhen}${moonNote}</span></div>
+      ${skyGuideLines()}
     </div>
-    <h4 class="tn-h">${tl("Best passes", "Beste Überflüge")}</h4>${passHtml}`;
+    <h4 class="tn-h">${tl("Best passes", "Beste Überflüge")}</h4>${passHtml}
+    ${skyGuideComing()}`;
 }
 
 // A calendar file for one pass, with a reminder 10 minutes before.

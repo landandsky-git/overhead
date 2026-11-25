@@ -1,9 +1,11 @@
 // Background thread: propagates every satellite so the sky view stays smooth on a phone.
 // Messages in:  reset | add {list:[[l1,l2,stdMag],...]} | obs {lat,lon,h} | tick {t, gen}
 //               passes {t, hours, indices, limit, job} | lookback {t0, t1, step, dir, radius, job}
-//               mags {list: [[idx, stdMag], ...]}
+//               mags {list: [[idx, stdMag], ...]} | skyline {heights: 72 numbers or null}
+//               eci {t, job}
 // Messages out: pos {t, gen, data: Float64Array [idx, az, el, rangeKm, lit, mag, az+1s, el+1s] ...} | passes {job, list}
 //               lookback {job, hits: [{idx, t, deg, lit, mag, from, to}]}
+//               eci {t, job, xyz: Float32Array [x, y, z] per satellite in Earth radii, lit: Uint8Array}
 // The page normally starts this worker with the orbit library already bundled in front of it,
 // which also works offline; loaded on its own, it fetches the library itself.
 if (typeof satellite === "undefined") importScripts("lib/satellite.min.js");
@@ -12,6 +14,13 @@ const D2R = Math.PI / 180, R2D = 180 / Math.PI, EARTH_R = 6371;
 let recs = [], mags = [];
 let gd = null, lat = 0, lon = 0;
 let cand = null, lastScan = 0;
+// The viewer's own horizon (trees, rooftops): 72 heights in degrees, one per 5° of direction.
+let skyline = null;
+function skylineAt(az) {
+  if (!skyline) return 0;
+  const x = (((az % 360) + 360) % 360) / 5, i = Math.floor(x) % 72, f = x - Math.floor(x);
+  return skyline[i] * (1 - f) + skyline[(i + 1) % 72] * f;
+}
 
 function sunPos(date) {
   const n = date.getTime() / 86400000 + 2440587.5 - 2451545.0;
@@ -106,6 +115,21 @@ function tick(t, gen) {
   postMessage({ type: "pos", t, gen, data }, [data.buffer]);
 }
 
+// Looking only once a minute can miss the very top of a fast, high pass by several degrees, so the
+// highest point is narrowed down to within a second around the best look (as in the page).
+function refinePeak(p, i, step) {
+  const at = t => {
+    const d = new Date(t), pv = satellite.propagate(recs[i], d);
+    if (!pv || !pv.position) return { az: 0, el: -90 };
+    const la = satellite.ecfToLookAngles(gd, satellite.eciToEcf(pv.position, satellite.gstime(d)));
+    return { az: ((la.azimuth * R2D) + 360) % 360, el: la.elevation * R2D };
+  };
+  let a = p.maxTime - step, b = p.maxTime + step;
+  for (let k = 0; k < 16; k++) { const m1 = a + (b - a) / 3, m2 = b - (b - a) / 3; if (at(m1).el < at(m2).el) a = m1; else b = m2; }
+  const t = (a + b) / 2, l = at(t);
+  if (l.el > p.maxEl) { p.maxEl = l.el; p.maxTime = t; p.maxAz = l.az; }
+}
+
 let passJob = 0;
 async function passes(m) {
   const job = passJob = m.job;
@@ -121,21 +145,30 @@ async function passes(m) {
   for (let k = 0; k < m.indices.length; k++) {
     const i = m.indices[k];
     if (!recs[i]) continue;
-    let cur = null;
+    let cur = null, prevEl = null;
+    const done = p => { refinePeak(p, i, step); p.blocked = !!skyline && !p.clear; list.push(p); };
     for (const t of ts) {
       const l = look(i, t.date, t.gmst, t.sunV, t.obs);
       if (!l) break;
+      const was = prevEl; prevEl = l.el;
       if (l.el > 0) {
-        if (!cur) cur = { idx: i, start: +t.date, startAz: l.az, maxEl: -90, visible: false, mag: 99 };
+        // the moment it crossed the horizon, between this look and the one before
+        if (!cur) cur = { idx: i, start: was != null && was <= 0 ? +t.date - step * l.el / (l.el - was) : +t.date, startAz: l.az, maxEl: -90, visible: false, mag: 99, clear: false };
         if (l.el > cur.maxEl) { cur.maxEl = l.el; cur.maxTime = +t.date; cur.maxAz = l.az; }
-        if (l.el > 10 && l.lit && t.dark) {
+        const top = skylineAt(l.az);
+        if (l.el > top + 1) cur.clear = true;   // some of the pass is above trees and rooftops
+        if (l.el > Math.max(10, top) && l.lit && t.dark) {
           if (l.mag < cur.mag) { cur.mag = l.mag; cur.limit = t.limit; }
           if (l.mag < t.limit) cur.visible = true;
         }
         cur.end = +t.date; cur.endAz = l.az;
-      } else if (cur) { if (cur.maxEl >= 15) list.push(cur); cur = null; }
+      } else if (cur) {
+        cur.end += step * was / (was - l.el);   // where it went below the horizon, between the last two looks
+        if (cur.maxEl >= 15) done(cur);
+        cur = null;
+      }
     }
-    if (cur && cur.maxEl >= 15) list.push(cur);
+    if (cur && cur.maxEl >= 15) done(cur);
     // Yield so position updates keep flowing while passes are worked out.
     if (k % 10 === 9) { await new Promise(r => setTimeout(r, 0)); if (job !== passJob) return; }
   }
@@ -186,9 +219,25 @@ function lookback(m) {
   postMessage({ type: "lookback", job: m.job, hits: hits.slice(0, 40) });
 }
 
+// The 3D globe: where every satellite is in space (Earth-centred, in Earth radii) and whether it is sunlit.
+function eci(m) {
+  const date = new Date(m.t), sunV = sunPos(date).v, n = recs.length;
+  const xyz = new Float32Array(n * 3), lit = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    const r = recs[i];
+    const pv = r ? satellite.propagate(r, date) : null, p = pv && pv.position;
+    if (!p || !isFinite(p.x)) continue;   // stays at the centre, hidden inside the Earth
+    xyz[i * 3] = p.x / 6371; xyz[i * 3 + 1] = p.y / 6371; xyz[i * 3 + 2] = p.z / 6371;
+    lit[i] = inShadow(p, sunV) ? 0 : 1;
+  }
+  postMessage({ type: "eci", t: m.t, job: m.job, xyz, lit }, [xyz.buffer, lit.buffer]);
+}
+
 onmessage = e => {
   const m = e.data;
   switch (m.type) {
+    case "skyline": skyline = m.heights || null; break;
+    case "eci": eci(m); break;
     case "reset": recs = []; mags = []; cand = null; break;
     case "add":
       for (const [l1, l2, m0] of m.list) {

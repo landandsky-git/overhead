@@ -117,16 +117,38 @@ function planetPositions(date) {
     return { name, ra, dec, mag: H + 5 * Math.log10(r * d) + phase(alpha) };
   });
 }
-// The Moon (Astronomical Almanac low-precision series, about 0.3 degrees): ecliptic position of date
-// and horizontal parallax, which shifts it by up to a degree as seen from Earth's surface.
+// The Moon: the main terms of Meeus' lunar series (Astronomical Algorithms, chapter 47), good to
+// well under an arcminute, which eclipses need (the Moon's disc is only half a degree). Rows are
+// [D, M, M', F, coefficient]: sines in millionths of a degree for longitude and latitude, cosines in
+// metres for distance. The parallax shifts the Moon by up to a degree as seen from Earth's surface.
+const MOON_LON = [[0,0,1,0,6288774],[2,0,-1,0,1274027],[2,0,0,0,658314],[0,0,2,0,213618],[0,1,0,0,-185116],[0,0,0,2,-114332],[2,0,-2,0,58793],
+  [2,-1,-1,0,57066],[2,0,1,0,53322],[2,-1,0,0,45758],[0,1,-1,0,-40923],[1,0,0,0,-34720],[0,1,1,0,-30383],[2,0,0,-2,15327],[0,0,1,2,-12528],
+  [0,0,1,-2,10980],[4,0,-1,0,10675],[0,0,3,0,10034],[4,0,-2,0,8548],[2,1,-1,0,-7888],[2,1,0,0,-6766],[1,0,-1,0,-5163],[1,1,0,0,4987],
+  [2,-1,1,0,4036],[2,0,2,0,3994],[4,0,0,0,3861],[2,0,-3,0,3665],[0,1,-2,0,-2689],[2,0,-1,2,-2602],[2,-1,-2,0,2390],[1,0,1,0,-2348],
+  [2,-2,0,0,2236],[0,1,2,0,-2120],[0,2,0,0,-2069],[2,-2,-1,0,2048],[2,0,1,-2,-1773],[2,0,0,2,-1595],[4,-1,-1,0,1215],[0,0,2,2,-1110]];
+const MOON_LAT = [[0,0,0,1,5128122],[0,0,1,1,280602],[0,0,1,-1,277693],[2,0,0,-1,173237],[2,0,-1,1,55413],[2,0,-1,-1,46271],[2,0,0,1,32573],
+  [0,0,2,1,17198],[2,0,1,-1,9266],[0,0,2,-1,8822],[2,-1,0,-1,8216],[2,0,-2,-1,4324],[2,0,1,1,4200],[2,1,0,-1,-3359],[2,-1,-1,1,2463],
+  [2,-1,0,1,2211],[2,-1,-1,-1,2065],[0,1,-1,-1,-1870],[4,0,-1,-1,1828],[0,1,0,1,-1794],[0,0,0,3,-1749],[0,1,-1,1,-1565],[1,0,0,1,-1491],
+  [0,1,1,1,-1475],[0,1,1,-1,-1410],[0,1,0,-1,-1344],[1,0,0,-1,-1335],[0,0,3,1,1107],[4,0,0,-1,1021],[4,0,-1,1,833]];
+const MOON_DIST = [[0,0,1,0,-20905355],[2,0,-1,0,-3699111],[2,0,0,0,-2955968],[0,0,2,0,-569925],[0,1,0,0,48888],[0,0,0,2,-3149],[2,0,-2,0,246158],
+  [2,-1,-1,0,-152138],[2,0,1,0,-170733],[2,-1,0,0,-204586],[0,1,-1,0,-129620],[1,0,0,0,108743],[0,1,1,0,104755],[2,0,0,-2,10321],
+  [0,0,1,-2,79661],[4,0,-1,0,-34782],[0,0,3,0,-23210],[4,0,-2,0,-21636],[2,1,-1,0,24208],[2,1,0,0,30824],[1,0,-1,0,-8379],[1,1,0,0,-16675],
+  [2,-1,1,0,-12831],[2,0,2,0,-10445],[4,0,0,0,-11650],[2,0,-3,0,14403],[0,1,-2,0,-7003],[2,-1,-2,0,10056],[1,0,1,0,6322],[2,-2,0,0,-9884]];
 function moonPos(date) {
-  const T = (jd(date) - 2451545) / 36525, s = d => Math.sin(d * D2R), c = d => Math.cos(d * D2R);
-  const lon = 218.32 + 481267.881 * T + 6.29 * s(135.0 + 477198.87 * T) - 1.27 * s(259.3 - 413335.36 * T)
-    + 0.66 * s(235.7 + 890534.22 * T) + 0.21 * s(269.9 + 954397.74 * T) - 0.19 * s(357.5 + 35999.05 * T) - 0.11 * s(186.5 + 966404.03 * T);
-  const lat = 5.13 * s(93.3 + 483202.02 * T) + 0.28 * s(228.2 + 960400.89 * T) - 0.28 * s(318.3 + 6003.15 * T) - 0.17 * s(217.6 - 407332.21 * T);
-  const par = 0.9508 + 0.0518 * c(135.0 + 477198.87 * T) + 0.0095 * c(259.3 - 413335.36 * T) + 0.0078 * c(235.7 + 890534.22 * T) + 0.0028 * c(269.9 + 954397.74 * T);
-  const { ra, dec } = eclToEq(lon * D2R, lat * D2R, (23.439 - 0.013 * T) * D2R);
-  return { ra, dec, lon: lon * D2R, lat: lat * D2R, parallax: par };
+  const T = (jd(date) + 69 / 86400 - 2451545) / 36525;   // in Terrestrial Time, about 69 s ahead of the clock
+  const Lp = 218.3164477 + 481267.88123421 * T - 0.0015786 * T * T, D = 297.8501921 + 445267.1114034 * T - 0.0018819 * T * T;
+  const M = 357.5291092 + 35999.0502909 * T - 0.0001536 * T * T, Mp = 134.9633964 + 477198.8675055 * T + 0.0087414 * T * T;
+  const F = 93.2720950 + 483202.0175233 * T - 0.0036539 * T * T, E = 1 - 0.002516 * T - 0.0000074 * T * T;
+  const sum = (rows, fn) => rows.reduce((s, [d, m, mp, f, k]) => s + k * (m ? (Math.abs(m) === 1 ? E : E * E) : 1) * fn((d * D + m * M + mp * Mp + f * F) * D2R), 0);
+  const A1 = (119.75 + 131.849 * T) * D2R, A2 = (53.09 + 479264.290 * T) * D2R, A3 = (313.45 + 481266.484 * T) * D2R, L = Lp * D2R, Fr = F * D2R, Mr = Mp * D2R;
+  const sl = sum(MOON_LON, Math.sin) + 3958 * Math.sin(A1) + 1962 * Math.sin(L - Fr) + 318 * Math.sin(A2);
+  const sb = sum(MOON_LAT, Math.sin) - 2235 * Math.sin(L) + 382 * Math.sin(A3) + 175 * Math.sin(A1 - Fr) + 175 * Math.sin(A1 + Fr) + 127 * Math.sin(L - Mr) - 115 * Math.sin(L + Mr);
+  const dist = 385000.56 + sum(MOON_DIST, Math.cos) / 1000;
+  const lon = (Lp + sl / 1e6) * D2R, lat = sb / 1e6 * D2R;
+  // nutation (main term) for the apparent position, and the obliquity of the ecliptic of date
+  const om = (125.04452 - 1934.136261 * T) * D2R;
+  const { ra, dec } = eclToEq(lon - 17.2 / 3600 * Math.sin(om) * D2R, lat, (23.439291 - 0.0130042 * T + 9.2 / 3600 * Math.cos(om)) * D2R);
+  return { ra, dec, lon, lat, dist, parallax: Math.asin(6378.14 / dist) * R2D };
 }
 
 // Stars to magnitude 4, constellation lines and names (sky-data.js), shifted once for the Earth's
@@ -158,6 +180,7 @@ function computeSky() {
   // lit fraction from the Moon's angle to the Sun
   const lit = (1 - Math.cos(m.lat) * Math.cos(m.lon - sun.lam)) / 2;
   sky.moon = { name: "Moon", kind: "moon", mag: -12, lit, ...ma, v: enu(ma.az, ma.el) };
+  if (typeof computeSkyGuide === "function") computeSkyGuide(date, gmst, lat, lon);   // showers, comets, aurora (skyguide.js)
 }
 
 // ---------- one satellite at a time (main thread) ----------
@@ -188,8 +211,9 @@ function computePaths() {
   paths.clear();
   if (!S.loc) return;
   const date = new Date(simNow()), gd = observerGd();
-  // the followed pass draws its own full path, so the selected satellite only gets a trail otherwise
-  const want = S.now.filter(e => e.el > 0 && e.sat !== WATCH.sat && (e.sat.id === S.targetId || (e.lit && e.sat.cat === "bright" && S.show.bright))).slice(0, 30);
+  // Only the selected satellite gets a trail (where it was, where it's going); a followed pass
+  // draws its own full path instead.
+  const want = S.now.filter(e => e.el > 0 && e.sat !== WATCH.sat && e.sat.id === S.targetId);
   for (const e of want) {
     const r = rec(e.sat); if (!r) continue;
     const pts = [];
@@ -203,24 +227,41 @@ function computePaths() {
   }
 }
 
-// Passes of one satellite over the next 48 hours (cached for 10 minutes).
-function passesFor(sat) {
-  const key = S.loc ? `${S.loc.lat},${S.loc.lon}` : "";
-  if (sat._passes && sat._passes.key === key && Date.now() - sat._passes.at < 10 * 60e3) return sat._passes.list;
+// Your own horizon (trees and rooftops, recorded in horizon.js): 72 heights in degrees, one for every
+// 5° of compass direction, or null for a flat horizon. skylineVer changes whenever it does.
+let skyline = null, skylineVer = 0;
+function skylineAt(az) {
+  if (!skyline) return 0;
+  const x = (((az % 360) + 360) % 360) / 5, i = Math.floor(x) % 72, f = x - Math.floor(x);
+  return skyline[i] * (1 - f) + skyline[(i + 1) % 72] * f;
+}
+const behindSkyline = (az, el) => !!skyline && el < skylineAt(az);
+
+// Passes of one satellite over the next 48 hours (cached for 10 minutes). With `from` (ms) they are
+// worked out from that moment instead, without the cache; the automatic checks use it.
+// A pass that never rises above your skyline is marked `blocked`, and only counts as visible while
+// it is above it.
+function passesFor(sat, from) {
+  const key = S.loc ? `${S.loc.lat},${S.loc.lon},${skylineVer}` : "";
+  if (from == null && sat._passes && sat._passes.key === key && Date.now() - sat._passes.at < 10 * 60e3) return sat._passes.list;
   const r = rec(sat), list = [];
   if (r && S.loc) {
-    const gd = observerGd(), lat = S.loc.lat * D2R, lon = S.loc.lon * D2R, start = Date.now(), step = 30e3;
-    let cur = null;
+    const gd = observerGd(), lat = S.loc.lat * D2R, lon = S.loc.lon * D2R, start = from ?? Date.now(), step = 30e3;
+    const done = p => { refinePeak(p, t => lookAngles(r, gd, t), step); p.blocked = !!skyline && !p.clear; list.push(p); };
+    let cur = null, prevEl = null;
     for (let s = 0; s <= 48 * 120; s++) {
       const date = new Date(start + s * step), gmst = satellite.gstime(date);
       const pv = satellite.propagate(r, date);
       if (!pv || !pv.position) break;
       const la = satellite.ecfToLookAngles(gd, satellite.eciToEcf(pv.position, gmst));
-      const el = la.elevation * R2D, az = ((la.azimuth * R2D) + 360) % 360;
+      const el = la.elevation * R2D, az = ((la.azimuth * R2D) + 360) % 360, top = skylineAt(az), was = prevEl;
+      prevEl = el;
       if (el > 0) {
-        if (!cur) cur = { start: +date, startAz: az, maxEl: -90, visible: false, mag: 99 };
+        // the moment it crossed the horizon, between this look and the one before
+        if (!cur) cur = { start: was != null && was <= 0 ? +date - step * el / (el - was) : +date, startAz: az, maxEl: -90, visible: false, mag: 99, clear: false };
         if (el > cur.maxEl) { cur.maxEl = el; cur.maxTime = +date; cur.maxAz = az; }
-        if (el > 10) {
+        if (el > top + 1) cur.clear = true;
+        if (el > Math.max(10, top)) {
           const sun = sunPos(date), se = raDecToAltAz(sun.ra, sun.dec, gmst, lat, lon).el;
           if (se < -6 && !inShadow(pv.position, sun.v)) {
             const mag = magnitude(sat.m0, pv.position, sun.v, observerEci(gmst), la.rangeSat, el);
@@ -231,14 +272,51 @@ function passesFor(sat) {
           }
         }
         cur.end = +date; cur.endAz = az;
-      } else if (cur) { if (cur.maxEl >= 10) list.push(cur); cur = null; if (list.length >= 8) break; }
+      } else if (cur) {
+        cur.end += step * was / (was - el);   // where it went below the horizon, between the last two looks
+        if (cur.maxEl >= 10) done(cur);
+        cur = null; if (list.length >= 8) break;
+      }
     }
-    if (cur && cur.maxEl >= 10) list.push(cur);
+    if (cur && cur.maxEl >= 10) done(cur);
   }
-  sat._passes = { key, at: Date.now(), list };
+  if (from == null) sat._passes = { key, at: Date.now(), list };
   return list;
 }
+// Direction (az, el in degrees) of a satellite at time t (ms).
+function lookAngles(r, gd, t) {
+  const d = new Date(t), pv = satellite.propagate(r, d);
+  if (!pv || !pv.position) return { az: 0, el: -90 };
+  const la = satellite.ecfToLookAngles(gd, satellite.eciToEcf(pv.position, satellite.gstime(d)));
+  return { az: ((la.azimuth * R2D) + 360) % 360, el: la.elevation * R2D };
+}
+// Looking only every `step` ms can miss the very top of a fast, high pass by a few degrees, so the
+// highest point is narrowed down to within half a second around the best look.
+function refinePeak(p, at, step) {
+  let a = p.maxTime - step, b = p.maxTime + step;
+  for (let k = 0; k < 14; k++) { const m1 = a + (b - a) / 3, m2 = b - (b - a) / 3; if (at(m1).el < at(m2).el) a = m1; else b = m2; }
+  const t = (a + b) / 2, l = at(t);
+  if (l.el > p.maxEl) { p.maxEl = l.el; p.maxTime = t; p.maxAz = l.az; }
+}
 function nextPass(sat) { return passesFor(sat).find(p => p.end > Date.now()); }
+
+// How high and how bright a satellite is through one pass, in n steps: for the small graph in the
+// details panel. Brightness only counts while it is sunlit and the sky is dark enough.
+function passProfile(sat, p, n = 36) {
+  const r = rec(sat), out = [];
+  if (!r || !S.loc) return out;
+  const gd = observerGd(), lat = S.loc.lat * D2R, lon = S.loc.lon * D2R;
+  for (let k = 0; k <= n; k++) {
+    const date = new Date(p.start + (p.end - p.start) * k / n), gmst = satellite.gstime(date), pv = satellite.propagate(r, date);
+    if (!pv || !pv.position) continue;
+    const la = satellite.ecfToLookAngles(gd, satellite.eciToEcf(pv.position, gmst)), el = la.elevation * R2D;
+    const sun = sunPos(date), dark = raDecToAltAz(sun.ra, sun.dec, gmst, lat, lon).el < -6, lit = !inShadow(pv.position, sun.v);
+    const az = ((la.azimuth * R2D) + 360) % 360;
+    out.push({ el: Math.max(0, el), lit, dark, hidden: behindSkyline(az, el),
+               mag: lit && el > 0 ? magnitude(sat.m0, pv.position, sun.v, observerEci(gmst), la.rangeSat, el) : null });
+  }
+  return out;
+}
 
 const MU = 398600.4418, RE = 6378.137;
 function orbitInfo(sat) {

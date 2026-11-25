@@ -4,6 +4,8 @@
   (https://science.nasa.gov/3d-resources/international-space-station-iss-b/)
 - `hubble.glb`: "Hubble Space Telescope (A)", NASA 3D Resources
   (https://science.nasa.gov/3d-resources/hubble-space-telescope-a/)
+- `coastline.json`: coastlines for the 3D globe, from Natural Earth's 1:110m coastline
+  (https://www.naturalearthdata.com/, public domain), rounded to 0.1°.
 
 NASA 3D Resources are free to download and use; see NASA's media usage guidelines
 (https://www.nasa.gov/nasa-brand-center/images-and-media/).

@@ -89,9 +89,9 @@ const GUIDE = [
   { title: tl("Saw something move?", "Etwas Bewegtes gesehen?"), spot: ["grab"],
     text: tl("Open the list and tap “Saw something moving?”. Point where you saw it, and the app finds out which satellite it was.",
              "Öffne die Liste und tippe auf „Etwas Bewegtes gesehen?“. Zeig dorthin, wo du es gesehen hast, und die App findet heraus, welcher Satellit es war.") },
-  { title: tl("A few more buttons", "Noch ein paar Tasten"), spot: ["motionBtn", "camBtn", "timeBtn", "redBtn", "setBtn"],
-    text: tl("The phone button on the right switches between following your phone and dragging the sky with a finger, and ◉ puts the camera picture behind the sky. ◷ shows the sky up to 12 hours ahead. R turns the screen red (tap again for dimmer) so your eyes stay used to the dark. ⚙ has your location, how dark your sky is, and this guide.",
-             "Die Handy-Taste rechts schaltet um zwischen „dem Handy folgen“ und „den Himmel mit dem Finger ziehen“, und ◉ legt das Kamerabild hinter den Himmel. ◷ zeigt den Himmel bis zu 12 Stunden im Voraus. R färbt den Bildschirm rot (noch einmal tippen für dunkler), damit deine Augen an die Dunkelheit gewöhnt bleiben. Unter ⚙ findest du deinen Standort, wie dunkel dein Himmel ist, und diese Anleitung.") },
+  { title: tl("A few more buttons", "Noch ein paar Tasten"), spot: ["globeBtn", "motionBtn", "camBtn", "timeBtn", "redBtn", "setBtn"],
+    text: tl("On the right: the globe shows the whole Earth with every satellite, the phone button switches between following your phone and dragging the sky, and ◉ puts the camera picture behind the sky. ◷ shows the sky up to 12 hours ahead. R turns the screen red (tap again for dimmer) so your eyes stay used to the dark. ⚙ has your location, your horizon, and this guide.",
+             "Rechts: Der Globus zeigt die ganze Erde mit allen Satelliten, die Handy-Taste schaltet um zwischen „dem Handy folgen“ und „den Himmel ziehen“, und ◉ legt das Kamerabild hinter den Himmel. ◷ zeigt den Himmel bis zu 12 Stunden im Voraus. R färbt den Bildschirm rot (noch einmal tippen für dunkler), damit deine Augen an die Dunkelheit gewöhnt bleiben. Unter ⚙ findest du deinen Standort, deinen Horizont und diese Anleitung.") },
 ];
 let guideAt = 0;
 function showGuideStep() {
@@ -135,6 +135,7 @@ function openSettings() {
   $("batteryIn").checked = S.battery;
   $("locErr").hidden = true; markCoords(false);
   updateLocNow(); updateTleInfo(); renderSkySetting(); renderSightNote(); renderTextSetting(); renderLangSetting();
+  renderHorizonSetting(); renderPlaces(); renderInstall();
   $("settings").hidden = false;
   openLayer($("settings"), closeSettings, $("setDone"));
 }
@@ -147,8 +148,9 @@ function closeSettings() {
 const markCoords = bad => { for (const id of ["latIn", "lonIn"]) $(id).setAttribute("aria-invalid", bad); };
 function setLocation(loc) {
   S.loc = loc; store.set("loc", loc);
-  sendObs(); S.passes = null; S.passesAt = 0; S.passJob++;
+  sendObs(); loadSkyline(); S.passes = null; S.passesAt = 0; S.passJob++;
   computeSky(); updateLocNow(); updateStatus(); renderSheet(); updateCard();
+  if (!$("settings").hidden) { renderHorizonSetting(); renderPlaces(); }
 }
 $("setBtn").addEventListener("click", openSettings);
 $("setDone").addEventListener("click", closeSettings);

@@ -123,7 +123,8 @@ function updateCard() {
     [where, meta] = watching;
   } else if (n && n.el > 0) {
     where = lookText(n);
-    meta = `${fmtKm(n.range)} ${tl("away", "entfernt")} · ${visText(n.lit, n.mag)}`;
+    const behind = behindSkyline(n.az, n.el) ? tl("behind your trees or rooftops · ", "hinter deinen Bäumen oder Dächern · ") : "";
+    meta = `${behind}${fmtKm(n.range)} ${tl("away", "entfernt")} · ${visText(n.lit, n.mag)}`;
   } else if (!S.loc) {
     where = tl("Set your location to see where it is", "Lege deinen Standort fest, um zu sehen, wo er ist"); meta = "";
   } else {

@@ -9,6 +9,7 @@ async function begin(mode) {
   catch (e) { $("introErr").textContent = e.message; $("introErr").hidden = false; return; }
   $("intro").hidden = true; closeLayer($("intro"));
   $("motionBtn").hidden = false; updateModeUI();   // switch between following the phone and dragging (sensors.js)
+  $("globeBtn").hidden = false;                    // the 3D globe (globe.js)
   try { await navigator.wakeLock?.request("screen"); } catch {}
   // A town picked by hand is kept; otherwise refresh from GPS.
   if (!S.loc || !S.loc.src || S.loc.src === "gps") {
@@ -17,6 +18,7 @@ async function begin(mode) {
   }
   renderSheet(); updateCard();
   if (!store.get("guideSeen", false)) openGuide();
+  installTip();
 }
 $("startBtn").addEventListener("click", () => begin("sensor"));
 $("dragBtn").addEventListener("click", () => begin("drag"));
@@ -36,8 +38,11 @@ async function init() {
   loadColors(); resize(); sheetH();
   requestAnimationFrame(draw);
   if (typeof satellite === "undefined") { $("status").textContent = tl("Couldn't load the orbit library. Check your connection and reload.", "Die Bahnberechnung ließ sich nicht laden. Prüfe deine Verbindung und lade neu."); return; }
-  sendObs(); computeSky();
+  sendObs(); loadSkyline(); computeSky();
   setInterval(requestTick, 250);
+  setInterval(updateCompassPill, 1000);
+  loadAurora(); setInterval(loadAurora, 30 * 60e3);   // NOAA's aurora forecast (skyguide.js), refreshed hourly
+  loadComets();
   setInterval(() => { computeSky(); updateStatus(); updateCard(); refreshTimeLabels(); if (S.detailsId) renderNow(S.byId.get(S.detailsId)); }, 1000);
   setInterval(computePaths, 4000);
   setInterval(() => { if (S.tab === "now" && $("sheet").classList.contains("open") && !listInUse()) renderSheet(); }, 2000);

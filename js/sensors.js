@@ -66,6 +66,9 @@ function learnOffset(est, k) {
   SENS.n = (SENS.n || 0) + 1;
   if (SENS.offset == null) { SENS.offset = est; return; }
   const diff = angDiff(est, SENS.offset);
+  // How far the compass strays from the gyroscope on average, once settled and while the phone is
+  // turned slowly (quick turns make the two streams disagree briefly anyway). See compassUnsteady().
+  if (SENS.n > 60 && Math.hypot(...(SENS.rate || [0, 0, 0])) < 0.5) SENS.noise = SENS.noise == null ? Math.abs(diff) : SENS.noise * 0.96 + Math.abs(diff) * 0.04;
   SENS.offset += SENS.n < 60 ? diff / SENS.n : Math.max(-8, Math.min(8, diff)) * k;
 }
 // Heading (degrees clockwise from north) of whichever device axis lies flatter: the top edge or the camera.
@@ -89,6 +92,7 @@ function onRelative(e) {
   if (e.absolute === true) return onAbsolute(e);   // Firefox: this stream is already north-based
   const R = rotFromEuler(e.alpha, e.beta, e.gamma);
   SENS.rel = R; SENS.lastRel = Date.now();
+  if (typeof e.webkitCompassAccuracy === "number") SENS.acc = e.webkitCompassAccuracy;   // iPhone: ± degrees, -1 = needs calibrating
   // iOS: the compass heading is for the top edge and is trustworthy while the phone is fairly flat.
   if (typeof e.webkitCompassHeading === "number" && e.webkitCompassHeading >= 0 && Math.abs(e.beta) < 50 && Math.abs(e.gamma) < 50) {
     learnOffset(e.webkitCompassHeading - axisHeading(R, true), 0.05);
@@ -155,6 +159,26 @@ function updateModeUI() {
   $("camBtn").hidden = !on;   // the camera view follows the phone too
 }
 $("motionBtn").addEventListener("click", () => setMotion(S.mode !== "sensor"));
+
+// --- compass check ---
+// The compass is unsteady when the phone says so (iPhone: worse than ±25°, or -1 = needs calibrating)
+// or when its readings keep straying from the gyroscope by more than about 10°: usually metal or a
+// magnet nearby, or a compass that needs calibrating. A small pill then offers the fixes; it goes
+// once the compass has been steady for a few seconds.
+const compassUnsteady = () => S.mode === "sensor" && ((SENS.acc != null && (SENS.acc < 0 || SENS.acc > 25)) || (SENS.noise ?? 0) > 10);
+const CPILL = { badSince: 0, goodSince: 0 };
+function updateCompassPill() {
+  const now = Date.now(), bad = compassUnsteady(), pill = $("compassPill");
+  if (bad) { CPILL.goodSince = 0; CPILL.badSince = CPILL.badSince || now; } else { CPILL.badSince = 0; CPILL.goodSince = CPILL.goodSince || now; }
+  const busy = ALIGN.on || IDENT.on || HZ.on || !$("intro").hidden;
+  if (pill.hidden && bad && !busy && now - CPILL.badSince > 3000) pill.hidden = false;
+  else if (!pill.hidden && (busy || (!bad && now - CPILL.goodSince > 5000))) pill.hidden = true;
+}
+$("compassPill").addEventListener("click", () => {
+  showHint(tl("Wave your phone slowly in a figure-8 a few times, away from metal, cars and magnets. For the most accurate direction, line up on a star with ◎.",
+              "Schwenk dein Handy ein paar Mal langsam in Form einer Acht, fern von Metall, Autos und Magneten. Am genauesten wird die Richtung, wenn du sie mit ◎ an einem Stern ausrichtest."), 10000);
+  $("alignBtn").classList.add("spot"); setTimeout(() => $("alignBtn").classList.remove("spot"), 6000);
+});
 
 function getLocation() {
   return new Promise((resolve, reject) => {

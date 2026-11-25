@@ -19,6 +19,7 @@ async function startWorker() {
     if (m.type === "pos") { tickBusy = false; if (m.gen === S.gen) applyPositions(m.data, m.t); }
     else if (m.type === "passes" && m.job === S.passJob) applyPasses(m.list);
     else if (m.type === "lookback") applyLookback(m);
+    else if (m.type === "eci") applyGlobePositions(m);
   };
   w.onerror = () => { S.loading = tl("The satellite calculator didn't start. Reload the page.", "Die Satellitenberechnung ist nicht gestartet. Lade die Seite neu."); updateStatus(); };
   worker.real = w;
@@ -27,12 +28,13 @@ async function startWorker() {
 startWorker();
 
 function requestTick() {
-  if (document.hidden) return;
+  if (document.hidden || GLOBE.on) return;   // the 3D globe covers the sky and asks for its own positions
   if (tickBusy && Date.now() - tickSent < 3000) return;
   tickBusy = true; tickSent = Date.now();
   worker.postMessage({ type: "tick", t: simNow(), gen: S.gen });
 }
 function sendObs() { if (S.loc) worker.postMessage({ type: "obs", lat: S.loc.lat, lon: S.loc.lon, h: S.loc.h || 0 }); }
+function sendSkyline() { worker.postMessage({ type: "skyline", heights: skyline }); }
 
 function applyPositions(d, t) {
   const now = [], map = new Map();

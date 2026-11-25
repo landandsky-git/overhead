@@ -12,7 +12,7 @@ const context = {
 };
 context.window = context; context.self = context;
 vm.createContext(context);
-for (const file of ["lib/satellite.min.js", "js/i18n.js", "codes.js", "sky-data.js", "js/state.js", "js/data.js", "js/astro.js", "tests/checks.js"]) {
+for (const file of ["lib/satellite.min.js", "js/i18n.js", "codes.js", "sky-data.js", "js/state.js", "js/data.js", "js/astro.js", "js/skyguide.js", "tests/pass-reference.js", "tests/checks.js"]) {
   vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file });
 }
 

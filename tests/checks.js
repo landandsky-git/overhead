@@ -34,7 +34,7 @@
       const sun = sunPos(date), sSep = sepArcmin(deg(sun.ra), sun.dec * 180 / Math.PI, ref.Sun[0], ref.Sun[1]);
       check(`Sun position ${day}`, sSep < 3, `${sSep.toFixed(1)}′ off`);
       const moon = moonPos(date), mSep = sepArcmin(deg(moon.ra), moon.dec * 180 / Math.PI, ref.Moon[0], ref.Moon[1]);
-      check(`Moon position ${day}`, mSep < 25, `${mSep.toFixed(1)}′ off`);
+      check(`Moon position ${day}`, mSep < 2, `${mSep.toFixed(2)}′ off`);   // eclipses need it within an arcminute or two
       for (const p of planetPositions(date)) {
         const [ra, dec, mag] = ref[p.name], sep = sepArcmin(deg(p.ra), p.dec * 180 / Math.PI, ra, dec);
         check(`${p.name} position ${day}`, sep < 10, `${sep.toFixed(1)}′ off`);
@@ -85,6 +85,51 @@
     check("Star catalog loaded", CATALOG.stars.length >= 500, `${CATALOG.stars.length} stars`);
     check("Sirius is the brightest star", sirius && sirius.mag < -1 && CATALOG.stars.every(s => s.mag >= sirius.mag));
     check("Constellation outlines loaded", CATALOG.lines.length >= 80, `${CATALOG.lines.length} segments`);
+
+    // --- satellite passes against Skyfield, an independent astronomy library (tests/pass-reference.js) ---
+    // The app looks every 30 seconds and works out the exact moments in between: rise, highest point
+    // and setting should be within 5 seconds of Skyfield's, and the highest point within 0.1°.
+    if (typeof PASS_REFERENCE !== "undefined") {
+      const ref = PASS_REFERENCE, keepLoc = S.loc;
+      S.loc = { lat: ref.place.lat, lon: ref.place.lon, h: ref.place.h };
+      const app = passesFor({ id: "25544", l1: ref.l1, l2: ref.l2, m0: -1.3 }, Date.parse(ref.start));
+      S.loc = keepLoc;
+      const want = ref.passes.slice(0, app.length >= 8 ? 8 : ref.passes.length);
+      let worst = { rise: 0, set: 0, max: 0, el: 0 }, matched = 0;
+      for (const r of want) {
+        const p = app.find(a => Math.abs(a.start - r.rise) < 120e3);
+        if (!p) continue;
+        const rise = (p.start - r.rise) / 1000, set = (r.set - p.end) / 1000, max = Math.abs(p.maxTime - r.max) / 1000, el = Math.abs(p.maxEl - r.maxEl);
+        if (Math.abs(rise) <= 5 && Math.abs(set) <= 5 && max <= 5 && el <= 0.1) matched++;
+        worst = { rise: Math.max(worst.rise, Math.abs(rise)), set: Math.max(worst.set, Math.abs(set)), max: Math.max(worst.max, max), el: Math.max(worst.el, el) };
+      }
+      check("ISS passes match Skyfield", app.length >= 8 && matched === want.length,
+        `${matched} of ${want.length} passes; worst: rise ${worst.rise.toFixed(0)} s, set ${worst.set.toFixed(0)} s, peak ${worst.max.toFixed(0)} s and ${worst.el.toFixed(2)}°`);
+    }
+
+    // --- the night-sky guide (js/skyguide.js) ---
+    if (typeof cometAt === "function") {
+      // C/2023 A3 (Tsuchinshan-ATLAS) on 2024-10-14 00:00 UT; NASA JPL Horizons: RA 219.3349°, Dec -0.2690° (J2000),
+      // 0.5807 AU from the Sun and 0.4771 AU from Earth. Orbit from JPL's Small-Body Database.
+      const d = new Date("2024-10-14T00:00:00Z"), c = { e: 1.0001, q: 0.391, i: 139.11, om: 21.56, w: 308.49, tp: 2460581.24, M1: 8.9, K1: 5.5 };
+      const p = cometAt(c, d), e = eqToEcl(p.ra, p.dec), j = eclToEq(e.lon - precession(d), e.lat), rad = Math.PI / 180;
+      const off = Math.acos(Math.sin(j.dec) * Math.sin(-0.2690 * rad) + Math.cos(j.dec) * Math.cos(-0.2690 * rad) * Math.cos(j.ra - 219.3349 * rad)) / rad * 60;
+      check("Comet position matches NASA Horizons", off < 12 && Math.abs(p.r - 0.5807) < 0.002 && Math.abs(p.delta - 0.4771) < 0.002,
+        `${off.toFixed(1)}′ off, ${p.r.toFixed(4)} and ${p.delta.toFixed(4)} AU`);
+      const gem = SHOWERS.find(s => s[0] === "Geminids"), qua = SHOWERS.find(s => s[0] === "Quadrantids");
+      const g = showerAt(gem, Date.UTC(2026, 11, 14, 22)), q1 = showerAt(qua, Date.UTC(2026, 11, 30, 22)), q2 = showerAt(qua, Date.UTC(2027, 0, 3, 22));
+      check("Meteor showers: Geminids peak on 14 December", g.active && Math.abs(g.days) < 1 && g.zhr > 100, `${g.days.toFixed(1)} days, rate ${g.zhr.toFixed(0)}`);
+      check("Meteor showers: Quadrantids across New Year", q1.active && q1.days < 0 && q2.active && Math.abs(q2.days) < 1);
+      check("Meteor showers: none of them active in mid-June", SHOWERS.every(s => !showerAt(s, Date.UTC(2027, 5, 15, 22)).active));
+      // The partial solar eclipse of 12 August 2026 seen from Rastatt: about 85-90% of the Sun covered
+      // a little after 20:00 local time, with the Sun low in the west.
+      const keepLoc = S.loc;
+      S.loc = { lat: 48.8585, lon: 8.2033, h: 120 };
+      const ecl = eclipseHere({ kind: "S", type: "T", t: Date.parse("2026-08-12T17:46:06Z") - 70e3 });
+      S.loc = keepLoc;
+      check("Solar eclipse of 12 Aug 2026 from Rastatt", ecl && ecl.cov > 0.8 && ecl.cov < 0.95 && Math.abs(ecl.t - Date.parse("2026-08-12T18:15:00Z")) < 20 * 60e3,
+        ecl ? `${Math.round(ecl.cov * 100)}% covered at ${new Date(ecl.t).toISOString().slice(11, 16)} UT` : "not seen");
+    }
 
     return results;
   }

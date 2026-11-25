@@ -92,12 +92,30 @@ function renderDetailPasses(sat) {
   }
   const list = passesFor(sat).filter(p => p.end > Date.now()).slice(0, 6);
   S.detailPasses = { sat, list };
-  box.innerHTML = list.length ? `<p class="small">${tl("Tap a pass to follow it on the sky.", "Tippe einen Überflug an, um ihm am Himmel zu folgen.")}</p>` + list.map((p, i) => `
+  box.innerHTML = list.length ? `<p class="small">${tl("Tap a pass to follow it on the sky. In each graph the line is its height above the horizon and the bars show how bright it is: gold while you can see it.",
+                                                         "Tippe einen Überflug an, um ihm am Himmel zu folgen. In jeder Grafik zeigt die Linie die Höhe über dem Horizont und die Balken die Helligkeit: golden, solange du ihn sehen kannst.")}</p>` + list.map((p, i) => `
     <button class="passrow ${p.visible ? "lit" : ""}" data-i="${i}">
       <span class="dot"></span>
-      <span>${fmtDayTime(p.start)}<span class="sub">${compassName(p.startAz)} → ${compassName(p.endAz)} · ${tl(`peak ${p.maxEl.toFixed(0)}° at ${fmtTime(p.maxTime)}`, `bis ${p.maxEl.toFixed(0)}° um ${fmtTime(p.maxTime)}`)}</span></span>
-      <span class="num">${Math.max(1, Math.round((p.end - p.start) / 60000))} min<span class="sub">${p.visible ? `${tl("visible", "sichtbar")}, ${magText(p.mag)}` : p.mag < 50 ? `${tl("too faint", "zu schwach")}, ${magText(p.mag)}` : tl("not visible", "nicht sichtbar")}</span></span>
+      <span>${fmtDayTime(p.start)}<span class="sub">${compassName(p.startAz)} → ${compassName(p.endAz)} · ${tl(`peak ${p.maxEl.toFixed(0)}° at ${fmtTime(p.maxTime)}`, `bis ${p.maxEl.toFixed(0)}° um ${fmtTime(p.maxTime)}`)}</span>${passGraph(sat, p)}</span>
+      <span class="num">${Math.max(1, Math.round((p.end - p.start) / 60000))} min<span class="sub">${p.blocked ? tl("behind obstacles", "hinter Hindernissen") : p.visible ? `${tl("visible", "sichtbar")}, ${magText(p.mag)}` : p.mag < 50 ? `${tl("too faint", "zu schwach")}, ${magText(p.mag)}` : tl("not visible", "nicht sichtbar")}</span></span>
     </button>`).join("") : `<p class="small">${tl("No passes above 10° in the next 48 hours.", "Keine Überflüge über 10° in den nächsten 48 Stunden.")}</p>`;
+}
+// A small graph of one pass. The line is its height above the horizon (the top is straight up); the
+// bars show how bright it is while sunlit in a dark sky, taller for brighter: gold while it is bright
+// enough for your sky, grey while too faint. Nothing while it is behind your trees or rooftops.
+function passGraph(sat, p) {
+  const pts = passProfile(sat, p, 40), W = 132, H = 30, L = p.limit ?? limitNow();
+  if (pts.length < 2) return "";
+  const x = k => (k / (pts.length - 1) * (W - 2) + 1).toFixed(1);
+  const line = pts.map((q, k) => `${x(k)},${(H - 1 - q.el / 90 * (H - 2)).toFixed(1)}`).join(" ");
+  let bright = "", faint = "";
+  pts.forEach((q, k) => {
+    if (q.mag == null || !q.dark || q.hidden) return;
+    const h = Math.max(1, Math.min(H - 2, (L + 2 - q.mag) / 8 * (H - 2)));   // 2 magnitudes too faint: nothing; 6 brighter than needed: full
+    const bar = `M${x(k)} ${H - 1}v${(-h).toFixed(1)}`;
+    if (q.mag <= L) bright += bar; else faint += bar;
+  });
+  return `<svg class="pgraph" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true"><path class="pg-faint" d="${faint}"/><path class="pg-bright" d="${bright}"/><polyline class="pg-el" points="${line}"/></svg>`;
 }
 $("detPasses").addEventListener("click", e => {
   const b = e.target.closest(".passrow"), d = S.detailPasses;

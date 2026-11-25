@@ -111,8 +111,8 @@ function draw() {
   frameNo++;
   if (!W) resize();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  // While aligning with the camera on, the sky is drawn over the live camera picture.
-  if (ALIGN.camera || CAM.on) ctx.clearRect(0, 0, W, H); else { ctx.fillStyle = C.sky; ctx.fillRect(0, 0, W, H); }
+  // With the camera on (camera view, aligning, recording the horizon) the sky is drawn over its picture.
+  if (ALIGN.camera || CAM.on || HZ.camera) ctx.clearRect(0, 0, W, H); else { ctx.fillStyle = C.sky; ctx.fillRect(0, 0, W, H); }
   if (S.mode !== "sensor") S.R = rotFromView(S.view.az, S.view.el);
   const R = S.R; if (!R) return;
   const th = S.mode === "sensor" ? screenAngle() : 0;
@@ -182,13 +182,14 @@ function draw() {
       ctx.fillStyle = C.moon; ctx.fillText(tl(`Moon ${Math.round(sky.moon.lit * 100)}%`, `Mond ${Math.round(sky.moon.lit * 100)} %`), q.x + 13, q.y + 12);
     }
   }
+  drawSkyGuide(P);                 // meteor shower radiants, comets, aurora (skyguide.js)
+  drawSkyline(R, f, th, P);        // your trees and rooftops (horizon.js)
   ctx.font = `10px ${FONT_M}`;
 
-  // satellite trails (selected satellite and bright sunlit ones)
+  // the selected satellite's trail: solid where it was, dashed where it's going
   const tgtSat = S.targetId ? S.byId.get(S.targetId) : null;
-  for (const [idx, pts] of paths) {
-    const isT = tgtSat && tgtSat.idx === idx;
-    ctx.strokeStyle = isT ? C.target : C.lit; ctx.globalAlpha = isT ? 0.6 : 0.25;
+  ctx.strokeStyle = C.target; ctx.globalAlpha = 0.6;
+  for (const pts of paths.values()) {
     ctx.setLineDash([3, 4]); polyline(pts.filter(p => p.future), R, f, th);
     ctx.setLineDash([]); polyline(pts.filter(p => !p.future), R, f, th);
   }
@@ -198,7 +199,7 @@ function draw() {
 
   // satellites: sunlit ones sized and faded by estimated brightness, on the same scale as the stars.
   // Dots are batched into one path per magnitude step so thousands stay cheap to draw.
-  const sh = new Path2D(), bins = MAG_STEPS.map(() => new Path2D()), litDrawn = [];
+  const sh = new Path2D(), bins = MAG_STEPS.map(() => new Path2D()), litDrawn = [], behind = new Path2D();
   const cx = W / 2, cy = H / 2, near = [];
   if (tapX.length < S.now.length) { tapX = new Float32Array(S.now.length); tapY = new Float32Array(S.now.length); tapI = new Int32Array(S.now.length); }
   tapN = 0;
@@ -216,6 +217,8 @@ function draw() {
     e.faint = !seeable;
     if (e.faint) {
       ctx.strokeStyle = C.target; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(q.x, q.y, 3, 0, 6.2832); ctx.stroke();
+    } else if (behindSkyline(e.az, e.el)) {   // behind your trees or rooftops: a dim dot
+      behind.moveTo(q.x + 1.5, q.y); behind.arc(q.x, q.y, 1.5, 0, 6.2832);
     } else if (e.lit) {
       const r = magRadius(e.mag);
       bins[magStep(e.mag)].moveTo(q.x + r, q.y); bins[magStep(e.mag)].arc(q.x, q.y, r, 0, 6.2832);
@@ -229,6 +232,7 @@ function draw() {
     if (d2 < 110 * 110 || (d2 < 150 * 150 && prevLabels.has(e.sat.idx))) near.push([d2, e]);
   }
   ctx.fillStyle = C.shadow; ctx.globalAlpha = 0.5; ctx.fill(sh);
+  ctx.fillStyle = C.dim; ctx.globalAlpha = 0.35; ctx.fill(behind);
   ctx.fillStyle = C.lit; ctx.shadowColor = C.lit;
   for (let b = MAG_STEPS.length - 1; b >= 0; b--) {
     ctx.globalAlpha = magAlpha(MAG_STEPS[b]); ctx.shadowBlur = MAG_STEPS[b] <= 1 ? 10 : MAG_STEPS[b] <= 3 ? 4 : 0;

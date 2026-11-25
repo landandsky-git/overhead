@@ -33,6 +33,7 @@ document.addEventListener("keydown", e => {
   const top = LAYERS[LAYERS.length - 1];
   if (top) { if (top.close) { e.preventDefault(); top.close(); } return; }
   if (ALIGN.on) closeAlign();
+  else if (HZ.on) closeHorizon();
   else if (IDENT.on) closeIdentify();
   else if (!$("timeBar").hidden) closeTimeBar();
   else if ($("sheet").classList.contains("open")) setSheetOpen(false);

@@ -67,6 +67,26 @@ jobs:
           done
           date -u +"%Y-%m-%dT%H:%M:%SZ" > site/data/updated.txt
 
+      # SpaceX's own Starlink orbits (CelesTrak's supplemental data) are fresher and more precise than
+      # the public ones, especially for newly launched trains; they replace the public ones in the list.
+      - name: Use SpaceX's own Starlink orbits
+        run: |
+          curl -sSL --retry 2 -A "Overhead satellite app (${{ github.repository }})" \
+            "https://celestrak.org/NORAD/elements/supplemental/sup-gp.php?FILE=starlink&FORMAT=csv" -o supgp.csv || true
+          if [ -f site/data/active.csv ] && head -c 200 supgp.csv 2>/dev/null | grep -q '^OBJECT_NAME,.*MEAN_MOTION'; then
+            python3 tools/merge-supgp.py site/data/active.csv supgp.csv
+          else
+            echo "No supplemental Starlink data this time; keeping the public orbits"
+          fi
+
+      # The brightest comets' orbits for the night-sky guide, from NASA JPL's Small-Body Database.
+      - name: Fetch comet orbits (keep the last good copy if JPL says no)
+        run: |
+          if python3 tools/build-comets.py site/data/comets.json; then exit 0; fi
+          echo "JPL gave no data, reusing the published copy"
+          curl -sSL "${{ steps.pages.outputs.base_url }}/data/comets.json" -o site/data/comets.json || true
+          grep -q '"comets"' site/data/comets.json 2>/dev/null || rm -f site/data/comets.json
+
       # Upcoming rocket launches and the people in space, for the Space tab, from The Space Devs'
       # Launch Library 2 (which allows only a few requests an hour, so phones don't ask it directly).
       - name: Fetch launches and crew (keep the last good copy if the library says no)

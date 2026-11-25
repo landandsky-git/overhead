@@ -156,6 +156,10 @@ button.passrow { width: 100%; text-align: left; }
 .passrow.lit .dot { background: var(--lit); box-shadow: 0 0 6px var(--lit); }
 .passrow .sub { display: block; font: calc(11px * var(--text)) var(--font-data); color: var(--dim); }
 .passrow .num { font: calc(12px * var(--text)) var(--font-data); text-align: right; font-variant-numeric: tabular-nums; }
+.pgraph { display: block; margin-top: 5px; max-width: 100%; height: auto; }
+.pgraph .pg-el { fill: none; stroke: var(--ink); stroke-width: 1.2; opacity: .75; }
+.pgraph .pg-bright { stroke: var(--lit); stroke-width: 2.2; }
+.pgraph .pg-faint { stroke: var(--dim); stroke-width: 2.2; opacity: .55; }
 .tonight { display: grid; gap: 6px; padding: 2px 0 10px; }
 .tn-line { display: grid; grid-template-columns: 4.5em minmax(0, 1fr); gap: 10px; font-size: calc(13px * var(--text)); align-items: baseline; }
 .tn-k { font: calc(11px * var(--text)) var(--font-data); text-transform: uppercase; letter-spacing: .08em; color: var(--dim); }
@@ -192,13 +196,43 @@ button.passrow { width: 100%; text-align: left; }
 /* view buttons on the right edge: follow the phone / drag the sky, and the camera picture */
 .sidebtns { position: fixed; right: 16px; top: 50%; transform: translateY(-50%); display: grid; gap: 10px; }
 .sidebtns .iconbtn[aria-pressed="true"] { border-color: var(--target); color: var(--target); }
-#motionBtn svg { width: 18px; height: 18px; display: block; }
+#motionBtn svg, #globeBtn svg { width: 18px; height: 18px; display: block; }
 #motionBtn .slash { display: none; }
 #motionBtn[aria-pressed="false"] { color: var(--dim); }
 #motionBtn[aria-pressed="false"] .slash { display: inline; }
 .row.launch .nm { white-space: normal; }
 #modelDetailBtn { margin-top: 4px; }
 @media (max-width: 400px) { .tab { padding: 6px 7px; letter-spacing: .02em; } .sheet-head { gap: 4px; } }
+/* compass check: a small warning under the crosshair */
+.compasspill { position: fixed; left: 50%; top: 50%; transform: translate(-50%, 74px); white-space: nowrap; font: calc(11px * var(--text)) var(--font-data); color: var(--lit); border: 1px solid color-mix(in srgb, var(--lit) 45%, transparent); background: color-mix(in srgb, var(--panel) 85%, transparent); border-radius: 999px; padding: 4px 10px; }
+/* recording your horizon */
+.hz-progress { height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; }
+.hz-progress span { display: block; height: 100%; width: 0; background: var(--target); transition: width .2s ease-out; }
+@media (prefers-reduced-motion: reduce) { .hz-progress span { transition: none; } }
+/* saved places */
+.saved-list { display: grid; }
+.saved { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; border-top: 1px solid var(--line); }
+.saved-go { text-align: left; padding: 9px 2px; display: grid; gap: 1px; min-width: 0; overflow-wrap: anywhere; }
+.saved-go .sub { font: calc(12px * var(--text)) var(--font-data); color: var(--dim); }
+.saved.here .saved-go { color: var(--target); }
+.saved-del { color: var(--dim); padding: 8px 10px; font-size: calc(14px * var(--text)); }
+/* the night-sky guide in Tonight: wider labels for German, and the "Coming up" list */
+html[lang="de"] .tn-line { grid-template-columns: 6.4em minmax(0, 1fr); }
+.coming { display: grid; }
+.up-line { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 10px; font-size: calc(13px * var(--text)); padding: 6px 0; border-top: 1px solid var(--line); align-items: baseline; }
+.up-d { font: calc(11px * var(--text)) var(--font-data); color: var(--dim); }
+/* the 3D globe: full screen, with a header and a panel at the foot */
+.overlay.globe { display: block; padding: 0; overflow: hidden; touch-action: none; }
+#globeGL { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.globe-top { position: absolute; top: 0; left: 0; right: 0; padding: calc(env(safe-area-inset-top, 0px) + 6px) 16px 6px; display: flex; align-items: center; justify-content: space-between; gap: 12px; pointer-events: none; }
+.globe-top > * { pointer-events: auto; }
+.globe-top h2 { margin: 0; font: 600 calc(15px * var(--text)) var(--font-display); letter-spacing: .12em; text-transform: uppercase; }
+.globe-time { font: calc(11px * var(--text)) var(--font-data); color: var(--dim); font-variant-numeric: tabular-nums; }
+.globe-bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 16px calc(env(safe-area-inset-bottom, 0px) + 12px); display: grid; gap: 8px; background: linear-gradient(to top, color-mix(in srgb, var(--sky) 94%, transparent) 70%, transparent); }
+.gi-name { font: 600 calc(15px * var(--text)) var(--font-display); letter-spacing: .04em; }
+.gi-acts { display: flex; gap: 18px; }
+.seg button[aria-pressed="true"] { border-color: var(--lit); color: var(--ink); background: var(--panel-2); }
+
 /* "Forget my sightings" asks for a second tap */
 .secondary[data-armed] { border-color: var(--bad); color: var(--bad); }
 
